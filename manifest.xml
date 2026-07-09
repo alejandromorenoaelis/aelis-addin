@@ -1,10 +1,4 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!--
-  IMPORTANTE: reemplaza TODAS las apariciones de
-      https://tu-usuario.github.io/aelis-addin
-  por la URL real donde alojes estos archivos (p. ej. tu GitHub Pages).
-  Puedes hacerlo con un simple buscar-y-reemplazar en el editor.
--->
 <OfficeApp
   xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -18,12 +12,12 @@
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="Aelis Procesos"/>
   <Description DefaultValue="Botón para lanzar procesos automatizados desde Outlook (Power Automate)."/>
-  <IconUrl DefaultValue="https://tu-usuario.github.io/aelis-addin/assets/icon-64.png"/>
-  <HighResolutionIconUrl DefaultValue="https://tu-usuario.github.io/aelis-addin/assets/icon-128.png"/>
-  <SupportUrl DefaultValue="https://tu-usuario.github.io/aelis-addin/"/>
+  <IconUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-64.png"/>
+  <HighResolutionIconUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-128.png"/>
+  <SupportUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/"/>
 
   <AppDomains>
-    <AppDomain>https://tu-usuario.github.io</AppDomain>
+    <AppDomain>https://alejandromorenoaelis.github.io</AppDomain>
   </AppDomains>
 
   <Hosts>
@@ -39,7 +33,7 @@
   <FormSettings>
     <Form xsi:type="ItemRead">
       <DesktopSettings>
-        <SourceLocation DefaultValue="https://tu-usuario.github.io/aelis-addin/taskpane.html"/>
+        <SourceLocation DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html"/>
         <RequestedHeight>250</RequestedHeight>
       </DesktopSettings>
     </Form>
@@ -91,12 +85,12 @@
 
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon.16" DefaultValue="https://tu-usuario.github.io/aelis-addin/assets/icon-16.png"/>
-        <bt:Image id="Icon.32" DefaultValue="https://tu-usuario.github.io/aelis-addin/assets/icon-32.png"/>
-        <bt:Image id="Icon.80" DefaultValue="https://tu-usuario.github.io/aelis-addin/assets/icon-80.png"/>
+        <bt:Image id="Icon.16" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-16.png"/>
+        <bt:Image id="Icon.32" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-32.png"/>
+        <bt:Image id="Icon.80" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://tu-usuario.github.io/aelis-addin/taskpane.html"/>
+        <bt:Url id="Taskpane.Url" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Aelis"/>
