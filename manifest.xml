@@ -7,11 +7,11 @@
   xsi:type="MailApp">
 
   <Id>716f87f7-c43a-4c09-848f-1cd99bcca8a7</Id>
-  <Version>1.0.0.0</Version>
+  <Version>1.1.0.0</Version>
   <ProviderName>Aelis Consulting</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="Aelis Procesos"/>
-  <Description DefaultValue="Botón para lanzar procesos automatizados desde Outlook (Power Automate)."/>
+  <Description DefaultValue="Menú de procesos automatizados desde Outlook con Power Automate."/>
   <IconUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-64.png"/>
   <HighResolutionIconUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-128.png"/>
   <SupportUrl DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/"/>
@@ -34,7 +34,7 @@
     <Form xsi:type="ItemRead">
       <DesktopSettings>
         <SourceLocation DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html"/>
-        <RequestedHeight>250</RequestedHeight>
+        <RequestedHeight>280</RequestedHeight>
       </DesktopSettings>
     </Form>
   </FormSettings>
@@ -61,20 +61,79 @@
             <OfficeTab id="TabDefault">
               <Group id="aelisGroup">
                 <Label resid="GroupLabel"/>
-                <Control xsi:type="Button" id="aelisButton">
-                  <Label resid="Button.Label"/>
+                <Control xsi:type="Menu" id="aelisMenu">
+                  <Label resid="Menu.Label"/>
                   <Supertip>
-                    <Title resid="Button.Label"/>
-                    <Description resid="Button.Tooltip"/>
+                    <Title resid="Menu.Label"/>
+                    <Description resid="Menu.Tooltip"/>
                   </Supertip>
                   <Icon>
                     <bt:Image size="16" resid="Icon.16"/>
                     <bt:Image size="32" resid="Icon.32"/>
                     <bt:Image size="80" resid="Icon.80"/>
                   </Icon>
-                  <Action xsi:type="ShowTaskpane">
-                    <SourceLocation resid="Taskpane.Url"/>
-                  </Action>
+                  <Items>
+                    <Item id="itemRegistrar">
+                      <Label resid="Registrar.Label"/>
+                      <Supertip>
+                        <Title resid="Registrar.Label"/>
+                        <Description resid="Registrar.Tooltip"/>
+                      </Supertip>
+                      <Icon>
+                        <bt:Image size="16" resid="Icon.16"/>
+                        <bt:Image size="32" resid="Icon.32"/>
+                        <bt:Image size="80" resid="Icon.80"/>
+                      </Icon>
+                      <Action xsi:type="ShowTaskpane">
+                        <SourceLocation resid="Url.Registrar"/>
+                      </Action>
+                    </Item>
+                    <Item id="itemAprobacion">
+                      <Label resid="Aprobacion.Label"/>
+                      <Supertip>
+                        <Title resid="Aprobacion.Label"/>
+                        <Description resid="Aprobacion.Tooltip"/>
+                      </Supertip>
+                      <Icon>
+                        <bt:Image size="16" resid="Icon.16"/>
+                        <bt:Image size="32" resid="Icon.32"/>
+                        <bt:Image size="80" resid="Icon.80"/>
+                      </Icon>
+                      <Action xsi:type="ShowTaskpane">
+                        <SourceLocation resid="Url.Aprobacion"/>
+                      </Action>
+                    </Item>
+                    <Item id="itemAdjuntos">
+                      <Label resid="Adjuntos.Label"/>
+                      <Supertip>
+                        <Title resid="Adjuntos.Label"/>
+                        <Description resid="Adjuntos.Tooltip"/>
+                      </Supertip>
+                      <Icon>
+                        <bt:Image size="16" resid="Icon.16"/>
+                        <bt:Image size="32" resid="Icon.32"/>
+                        <bt:Image size="80" resid="Icon.80"/>
+                      </Icon>
+                      <Action xsi:type="ShowTaskpane">
+                        <SourceLocation resid="Url.Adjuntos"/>
+                      </Action>
+                    </Item>
+                    <Item id="itemDocumento">
+                      <Label resid="Documento.Label"/>
+                      <Supertip>
+                        <Title resid="Documento.Label"/>
+                        <Description resid="Documento.Tooltip"/>
+                      </Supertip>
+                      <Icon>
+                        <bt:Image size="16" resid="Icon.16"/>
+                        <bt:Image size="32" resid="Icon.32"/>
+                        <bt:Image size="80" resid="Icon.80"/>
+                      </Icon>
+                      <Action xsi:type="ShowTaskpane">
+                        <SourceLocation resid="Url.Documento"/>
+                      </Action>
+                    </Item>
+                  </Items>
                 </Control>
               </Group>
             </OfficeTab>
@@ -90,14 +149,25 @@
         <bt:Image id="Icon.80" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="Taskpane.Url" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html"/>
+        <bt:Url id="Url.Registrar" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html?action=registrar"/>
+        <bt:Url id="Url.Aprobacion" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html?action=aprobacion"/>
+        <bt:Url id="Url.Adjuntos" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html?action=adjuntos"/>
+        <bt:Url id="Url.Documento" DefaultValue="https://alejandromorenoaelis.github.io/aelis-addin/taskpane.html?action=documento"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Aelis"/>
-        <bt:String id="Button.Label" DefaultValue="Procesos"/>
+        <bt:String id="Menu.Label" DefaultValue="Procesos"/>
+        <bt:String id="Registrar.Label" DefaultValue="Registrar correo en seguimiento"/>
+        <bt:String id="Aprobacion.Label" DefaultValue="Enviar a aprobación"/>
+        <bt:String id="Adjuntos.Label" DefaultValue="Guardar adjuntos en SharePoint"/>
+        <bt:String id="Documento.Label" DefaultValue="Generar documento desde plantilla"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="Button.Tooltip" DefaultValue="Abre el panel para lanzar procesos automatizados con Power Automate."/>
+        <bt:String id="Menu.Tooltip" DefaultValue="Procesos automatizados de Aelis para este correo."/>
+        <bt:String id="Registrar.Tooltip" DefaultValue="Guarda remitente, asunto y fecha en la tabla de seguimiento."/>
+        <bt:String id="Aprobacion.Tooltip" DefaultValue="Envia el correo a un flujo de aprobacion (proxima fase)."/>
+        <bt:String id="Adjuntos.Tooltip" DefaultValue="Archiva los adjuntos en SharePoint (proxima fase)."/>
+        <bt:String id="Documento.Tooltip" DefaultValue="Genera un documento desde plantilla (proxima fase)."/>
       </bt:LongStrings>
     </Resources>
   </VersionOverrides>

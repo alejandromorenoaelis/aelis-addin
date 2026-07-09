@@ -6,23 +6,27 @@
   <title>Aelis Procesos</title>
   <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
   <style>
-    body { font-family: "Segoe UI", system-ui, sans-serif; margin: 0; padding: 16px; color: #201f1e; }
-    h1 { font-size: 16px; margin: 0 0 12px; }
-    .campo { font-size: 13px; color: #605e5c; margin-bottom: 4px; }
-    .valor { font-size: 14px; font-weight: 600; margin-bottom: 16px; word-break: break-word; }
-    button { background: #1e5aa8; color: #fff; border: 0; border-radius: 4px;
-             padding: 10px 16px; font-size: 14px; cursor: pointer; width: 100%; }
-    button:hover { background: #17488a; }
-    #status { margin-top: 14px; font-size: 13px; min-height: 18px; }
+    body { font-family:"Segoe UI",system-ui,sans-serif; margin:0; padding:16px; color:#201f1e; }
+    h1 { font-size:16px; margin:0 0 4px; }
+    #descripcion { font-size:13px; color:#605e5c; margin-bottom:16px; }
+    .campo { font-size:12px; color:#605e5c; margin-bottom:2px; }
+    .valor { font-size:14px; font-weight:600; margin-bottom:12px; word-break:break-word; }
+    button { background:#1e5aa8; color:#fff; border:0; border-radius:4px; padding:10px 16px; font-size:14px; cursor:pointer; width:100%; }
+    button:disabled { background:#c8c6c4; cursor:not-allowed; }
+    button:not(:disabled):hover { background:#17488a; }
+    #status { margin-top:14px; font-size:13px; min-height:18px; }
   </style>
 </head>
 <body>
-  <h1>Aelis · Procesos</h1>
+  <h1 id="titulo">Aelis · Procesos</h1>
+  <div id="descripcion"></div>
 
-  <div class="campo">Asunto del correo:</div>
-  <div class="valor" id="subject">—</div>
+  <div class="campo">Remitente:</div>
+  <div class="valor" id="remitente">—</div>
+  <div class="campo">Asunto:</div>
+  <div class="valor" id="asunto">—</div>
 
-  <button id="run">Ejecutar proceso</button>
+  <button id="run" disabled>Cargando…</button>
   <div id="status"></div>
 
   <script src="taskpane.js"></script>
