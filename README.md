@@ -27,7 +27,7 @@ En **Outlook en la web / nuevo Outlook**:
 3. Selecciona tu `manifest.xml`. Acepta el aviso de que no viene de la tienda.
 4. Abre cualquier correo: verás el botón **Procesos** (grupo *Aelis*) en el ribbon o en el menú **…**.
 
-> Para desplegarlo a toda la empresa hace falta el Centro de administración de M365
+> Para desplegarlo a toda la empresa hace falta el Centro de administración de M365.
 > (Apps integradas / implementación centralizada) → requiere un administrador global de Aelis.
 
 ## Fase 2 — Conectar Power Automate
