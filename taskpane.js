@@ -36,8 +36,7 @@ function leerCuerpo(formato) {
   });
 }
 
-// Corta las cadenas de respuesta y se queda con el ultimo mensaje,
-// que es donde normalmente esta la firma del remitente.
+// Corta las cadenas de respuesta y se queda con el ultimo mensaje.
 function aislarUltimoMensaje(texto) {
   const separadores = [
     /\r?\nDe:\s/i,
@@ -57,12 +56,25 @@ function aislarUltimoMensaje(texto) {
   return texto.slice(0, corte).trim();
 }
 
+// --- NUEVO (diagnostico): lista los adjuntos/imagenes que ve en el correo.
+function listarAdjuntos() {
+  const item = Office.context.mailbox.item;
+  const lista = item.attachments || [];
+  return lista.map((a) => ({
+    nombre: a.name,
+    tipo: a.contentType,
+    tamano: a.size,
+    inline: a.isInline,
+    clase: a.attachmentType,
+    id: a.id
+  }));
+}
+
 async function extraerFirma() {
   const status = document.getElementById("status");
 
   status.textContent = "Leyendo el correo...";
 
-  // Leemos el cuerpo en texto (para parsear) y en HTML (para mailto/tel/web).
   const [textoCompleto, htmlCompleto] = await Promise.all([
     leerCuerpo("text"),
     leerCuerpo("html")
@@ -72,7 +84,12 @@ async function extraerFirma() {
   datosCorreo.cuerpo = aislarUltimoMensaje(textoCompleto);
   datosCorreo.cuerpoHtml = htmlCompleto;
 
+  // Diagnostico de adjuntos/imagenes
+  const adjuntos = listarAdjuntos();
+  datosCorreo.adjuntos = adjuntos;
+
   mostrarPreview(datosCorreo.cuerpo);
+  mostrarAdjuntos(adjuntos);
 
   if (!FLOW_URL) {
     status.textContent = "\u2705 Add-in funcionando. Falta configurar FLOW_URL en taskpane.js.";
@@ -103,10 +120,37 @@ function mostrarPreview(texto) {
     label.textContent = "Texto detectado (ultimo mensaje):";
     pre = document.createElement("pre");
     pre.id = "preview";
-    pre.style.cssText = "background:#f3f2f1;border-radius:4px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:160px;overflow:auto;margin:2px 0 12px;";
+    pre.style.cssText = "background:#f3f2f1;border-radius:4px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:140px;overflow:auto;margin:2px 0 12px;";
     const boton = document.getElementById("run");
     boton.parentNode.insertBefore(label, boton);
     boton.parentNode.insertBefore(pre, boton);
   }
   pre.textContent = texto || "(vacio)";
+}
+
+// --- NUEVO (diagnostico): muestra en el panel la lista de adjuntos detectados.
+function mostrarAdjuntos(adjuntos) {
+  let box = document.getElementById("adjuntos");
+  if (!box) {
+    const label = document.createElement("div");
+    label.className = "campo";
+    label.textContent = "Adjuntos / imagenes detectados:";
+    box = document.createElement("pre");
+    box.id = "adjuntos";
+    box.style.cssText = "background:#fff4ce;border:1px solid #ffd666;border-radius:4px;padding:8px;font-size:11px;white-space:pre-wrap;max-height:200px;overflow:auto;margin:2px 0 12px;";
+    const boton = document.getElementById("run");
+    boton.parentNode.insertBefore(label, boton);
+    boton.parentNode.insertBefore(box, boton);
+  }
+  if (!adjuntos.length) {
+    box.textContent = "(no se detectaron adjuntos ni imagenes)";
+    return;
+  }
+  box.textContent = adjuntos.map((a, i) =>
+    (i + 1) + ") " + (a.nombre || "(sin nombre)") +
+    "\n   tipo: " + a.tipo +
+    "\n   inline: " + a.inline +
+    "\n   clase: " + a.clase +
+    "\n   tamano: " + a.tamano + " bytes"
+  ).join("\n\n");
 }
