@@ -3,31 +3,138 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aelis Procesos</title>
+  <title>Aelis · Extraer firma</title>
   <script src="https://appsforoffice.microsoft.com/lib/1.1/hosted/office.js"></script>
   <style>
-    body { font-family:"Segoe UI",system-ui,sans-serif; margin:0; padding:16px; color:#201f1e; }
-    h1 { font-size:16px; margin:0 0 4px; }
-    #descripcion { font-size:13px; color:#605e5c; margin-bottom:16px; }
-    .campo { font-size:12px; color:#605e5c; margin-bottom:2px; }
-    .valor { font-size:14px; font-weight:600; margin-bottom:12px; word-break:break-word; }
-    button { background:#1e5aa8; color:#fff; border:0; border-radius:4px; padding:10px 16px; font-size:14px; cursor:pointer; width:100%; }
-    button:disabled { background:#c8c6c4; cursor:not-allowed; }
-    button:not(:disabled):hover { background:#17488a; }
-    #status { margin-top:14px; font-size:13px; min-height:18px; }
+    :root{
+      --dark:#001C0B; --green:#5EFCA1; --green-deep:#0E7A4B;
+      --ink:#12211A; --muted:#6B7C74; --surface:#FFFFFF;
+      --surface-2:#F4F7F5; --line:#E4EAE7; --danger:#B4291F;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;}
+    body{
+      font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+      color:var(--ink); background:var(--surface); font-size:14px; line-height:1.45;
+    }
+
+    /* Cabecera con la marca */
+    .app-header{
+      background:var(--dark); color:#fff; padding:16px 18px 18px;
+    }
+    .wordmark{
+      font-size:26px; font-weight:800; letter-spacing:-0.5px; line-height:1;
+      display:inline-flex; align-items:flex-end;
+    }
+    .wordmark .us{
+      display:inline-block; width:18px; height:6px; background:var(--green);
+      margin-left:3px; margin-bottom:3px; border-radius:1px;
+    }
+    .app-sub{
+      margin-top:8px; font-size:12px; letter-spacing:2px; text-transform:uppercase;
+      color:var(--green); font-weight:600;
+    }
+
+    .app-body{padding:16px 18px 20px;}
+
+    /* Tarjeta del correo */
+    .card{
+      background:var(--surface-2); border:1px solid var(--line);
+      border-radius:8px; padding:12px 14px; margin-bottom:16px;
+    }
+    .row{display:flex; flex-direction:column; gap:1px; padding:5px 0;}
+    .row + .row{border-top:1px solid var(--line);}
+    .k{font-size:11px; letter-spacing:.4px; text-transform:uppercase; color:var(--muted);}
+    .v{font-size:14px; font-weight:600; word-break:break-word;}
+
+    /* Botón */
+    .btn{
+      width:100%; border:0; border-radius:8px; cursor:pointer;
+      background:var(--green); color:var(--dark);
+      font-family:inherit; font-size:15px; font-weight:700; padding:13px 16px;
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      transition:filter .15s ease, transform .05s ease;
+    }
+    .btn:hover:not(:disabled){filter:brightness(.94);}
+    .btn:active:not(:disabled){transform:translateY(1px);}
+    .btn:disabled{background:#D7DEDA; color:#8A968F; cursor:default;}
+    .btn:focus-visible{outline:3px solid var(--dark); outline-offset:2px;}
+
+    /* Spinner del botón */
+    .spin{
+      width:16px; height:16px; border:2px solid rgba(0,28,11,.25);
+      border-top-color:var(--dark); border-radius:50%; animation:rot .7s linear infinite;
+    }
+    @keyframes rot{to{transform:rotate(360deg);}}
+
+    /* Estado */
+    .status{
+      margin-top:16px; display:flex; gap:10px; align-items:flex-start;
+      padding:12px 14px; border-radius:8px; font-size:13.5px;
+    }
+    .status .ico{flex:0 0 auto; margin-top:1px;}
+    .status .msg{font-weight:600;}
+    .status .sub{font-weight:400; color:var(--muted); font-size:12.5px; margin-top:2px;}
+    .status.ok{background:#EAF8F0; border:1px solid #B7E6CC;}
+    .status.ok .msg{color:var(--green-deep);}
+    .status.work{background:var(--surface-2); border:1px solid var(--line); color:var(--muted);}
+    .status.err{background:#FBECEA; border:1px solid #F0C3BE;}
+    .status.err .msg{color:var(--danger);}
+
+    /* Check dibujado */
+    .check{width:20px;height:20px;}
+    .check circle{fill:var(--green-deep);}
+    .check path{
+      fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;
+      stroke-dasharray:20; stroke-dashoffset:20; animation:draw .35s ease .05s forwards;
+    }
+    @keyframes draw{to{stroke-dashoffset:0;}}
+
+    /* Detalle plegable */
+    .detalle{margin-top:16px; font-size:12px;}
+    .detalle summary{
+      cursor:pointer; color:var(--muted); font-weight:600; list-style:none;
+      padding:6px 0; user-select:none;
+    }
+    .detalle summary::-webkit-details-marker{display:none;}
+    .detalle summary::before{content:"▸ "; color:var(--green-deep);}
+    .detalle[open] summary::before{content:"▾ ";}
+    .detalle pre{
+      background:var(--surface-2); border:1px solid var(--line); border-radius:6px;
+      padding:8px; white-space:pre-wrap; max-height:150px; overflow:auto; margin:6px 0;
+      font-size:11.5px; color:var(--ink);
+    }
+    .imgs{color:var(--muted); font-size:11.5px;}
+
+    @media (prefers-reduced-motion: reduce){
+      .spin{animation:none;} .check path{animation:none; stroke-dashoffset:0;}
+    }
   </style>
 </head>
 <body>
-  <h1 id="titulo">Aelis · Procesos</h1>
-  <div id="descripcion"></div>
+  <header class="app-header">
+    <div class="wordmark">aelis<span class="us"></span></div>
+    <div class="app-sub">Extraer firma</div>
+  </header>
 
-  <div class="campo">Remitente:</div>
-  <div class="valor" id="remitente">—</div>
-  <div class="campo">Asunto:</div>
-  <div class="valor" id="asunto">—</div>
+  <main class="app-body">
+    <section class="card">
+      <div class="row"><span class="k">Remitente</span><span class="v" id="remitente">—</span></div>
+      <div class="row"><span class="k">Asunto</span><span class="v" id="asunto">—</span></div>
+    </section>
 
-  <button id="run" disabled>Cargando…</button>
-  <div id="status"></div>
+    <button id="run" class="btn" disabled>Extraer firma</button>
+
+    <div id="status" class="status" hidden></div>
+
+    <details class="detalle" id="detalle" hidden>
+      <summary>Ver detalle</summary>
+      <div class="k" style="margin-top:4px;">Texto detectado</div>
+      <pre id="preview">—</pre>
+      <div class="k">Imágenes de la firma</div>
+      <div class="imgs" id="imgs">—</div>
+    </details>
+  </main>
 
   <script src="taskpane.js"></script>
 </body>
