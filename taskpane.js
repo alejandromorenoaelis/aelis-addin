@@ -1,6 +1,5 @@
 // =====================================================================
-//  URL del flujo de Power Automate (disparador "Cuando se recibe una
-//  solicitud HTTP").
+//  URL del flujo de Power Automate.
 // =====================================================================
 const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7d726e3867224b58a544c874afb6f4be/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=aUXN-WDHSlIjy5RIuXp3tUeXvMvd1fLeluvpG7aWUB4";
 
@@ -14,20 +13,17 @@ Office.onReady(() => {
     asunto: item.subject || "",
     fecha: item.dateTimeCreated
   };
-
   document.getElementById("titulo").textContent = "Extraer firma";
   document.getElementById("descripcion").textContent =
     "Lee el cuerpo del correo y lo envia a Power Automate para extraer la firma.";
   document.getElementById("remitente").textContent = datosCorreo.remitente || "\u2014";
   document.getElementById("asunto").textContent = datosCorreo.asunto || "\u2014";
-
   const boton = document.getElementById("run");
   boton.textContent = "Extraer firma";
   boton.disabled = false;
   boton.onclick = extraerFirma;
 });
 
-// Lee el cuerpo del correo en el formato indicado ("text" o "html").
 function leerCuerpo(formato) {
   return new Promise((resolve) => {
     Office.context.mailbox.item.body.getAsync(formato, (res) => {
@@ -36,17 +32,12 @@ function leerCuerpo(formato) {
   });
 }
 
-// Corta las cadenas de respuesta y se queda con el ultimo mensaje.
 function aislarUltimoMensaje(texto) {
   const separadores = [
-    /\r?\nDe:\s/i,
-    /\r?\nFrom:\s/i,
-    /-----\s*Mensaje original\s*-----/i,
-    /-----\s*Original Message\s*-----/i,
-    /\r?\nEl .*escribio:/i,
-    /\r?\nOn .*wrote:/i,
-    /\r?\n_{5,}/,
-    /\r?\nEnviado desde/i
+    /\r?\nDe:\s/i, /\r?\nFrom:\s/i,
+    /-----\s*Mensaje original\s*-----/i, /-----\s*Original Message\s*-----/i,
+    /\r?\nEl .*escribio:/i, /\r?\nOn .*wrote:/i,
+    /\r?\n_{5,}/, /\r?\nEnviado desde/i
   ];
   let corte = texto.length;
   for (const re of separadores) {
@@ -56,46 +47,63 @@ function aislarUltimoMensaje(texto) {
   return texto.slice(0, corte).trim();
 }
 
-// --- NUEVO (diagnostico): lista los adjuntos/imagenes que ve en el correo.
+// Corta el HTML en el primer separador de respuesta -> queda el ultimo mensaje.
+function cortarHtmlUltimoMensaje(html) {
+  const marcadores = [
+    />De:<\/b>/i, />From:<\/b>/i,
+    /border-top:1pt solid/i,
+    /id="[^"]*divRplyFwdMsg[^"]*"/i,
+    /class="[^"]*gmail_quote[^"]*"/i,
+    /id="[^"]*x_Signature[^"]*"/i
+  ];
+  let corte = html.length;
+  for (const re of marcadores) {
+    const i = html.search(re);
+    if (i !== -1 && i < corte) corte = i;
+  }
+  return html.slice(0, corte);
+}
+
+// Extrae los valores cid: que aparecen en un trozo de HTML.
+function extraerCids(html) {
+  const set = new Set();
+  const re = /cid:([^"'\s>&]+)/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) set.add(m[1]);
+  return [...set];
+}
+
 function listarAdjuntos() {
-  const item = Office.context.mailbox.item;
-  const lista = item.attachments || [];
+  const lista = Office.context.mailbox.item.attachments || [];
   return lista.map((a) => ({
-    nombre: a.name,
-    tipo: a.contentType,
-    tamano: a.size,
-    inline: a.isInline,
-    clase: a.attachmentType,
-    id: a.id
+    nombre: a.name, tipo: a.contentType, tamano: a.size,
+    inline: a.isInline, contentId: a.contentId, id: a.id
   }));
 }
 
 async function extraerFirma() {
   const status = document.getElementById("status");
-
   status.textContent = "Leyendo el correo...";
 
   const [textoCompleto, htmlCompleto] = await Promise.all([
-    leerCuerpo("text"),
-    leerCuerpo("html")
+    leerCuerpo("text"), leerCuerpo("html")
   ]);
 
   datosCorreo.cuerpoCompleto = textoCompleto;
   datosCorreo.cuerpo = aislarUltimoMensaje(textoCompleto);
   datosCorreo.cuerpoHtml = htmlCompleto;
 
-  // Diagnostico de adjuntos/imagenes
   const adjuntos = listarAdjuntos();
-  datosCorreo.adjuntos = adjuntos;
+  const htmlTop = cortarHtmlUltimoMensaje(htmlCompleto);
+  const cidsUltimo = extraerCids(htmlTop);
 
   mostrarPreview(datosCorreo.cuerpo);
-  mostrarAdjuntos(adjuntos);
+  mostrarDiagnostico(adjuntos, cidsUltimo);
 
   if (!FLOW_URL) {
-    status.textContent = "\u2705 Add-in funcionando. Falta configurar FLOW_URL en taskpane.js.";
+    status.textContent = "\u2705 Add-in funcionando (modo diagnostico).";
     return;
   }
-
   status.textContent = "Enviando a Power Automate...";
   try {
     const res = await fetch(FLOW_URL, {
@@ -103,15 +111,13 @@ async function extraerFirma() {
       headers: { "Content-Type": "text/plain;charset=UTF-8" },
       body: JSON.stringify(datosCorreo)
     });
-    status.textContent = res.ok
-      ? "\u2705 Enviado correctamente a Power Automate."
+    status.textContent = res.ok ? "\u2705 Enviado a Power Automate."
       : "\u26A0\uFE0F El flujo respondio con codigo " + res.status + ".";
   } catch (e) {
-    status.textContent = "\u2705 Enviado. Si no ves confirmacion, revisa el flujo en Power Automate.";
+    status.textContent = "\u2705 Enviado (revisa el flujo).";
   }
 }
 
-// Muestra en el panel el texto detectado.
 function mostrarPreview(texto) {
   let pre = document.getElementById("preview");
   if (!pre) {
@@ -120,7 +126,7 @@ function mostrarPreview(texto) {
     label.textContent = "Texto detectado (ultimo mensaje):";
     pre = document.createElement("pre");
     pre.id = "preview";
-    pre.style.cssText = "background:#f3f2f1;border-radius:4px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:140px;overflow:auto;margin:2px 0 12px;";
+    pre.style.cssText = "background:#f3f2f1;border-radius:4px;padding:8px;font-size:12px;white-space:pre-wrap;max-height:120px;overflow:auto;margin:2px 0 12px;";
     const boton = document.getElementById("run");
     boton.parentNode.insertBefore(label, boton);
     boton.parentNode.insertBefore(pre, boton);
@@ -128,29 +134,36 @@ function mostrarPreview(texto) {
   pre.textContent = texto || "(vacio)";
 }
 
-// --- NUEVO (diagnostico): muestra en el panel la lista de adjuntos detectados.
-function mostrarAdjuntos(adjuntos) {
-  let box = document.getElementById("adjuntos");
+function mostrarDiagnostico(adjuntos, cidsUltimo) {
+  let box = document.getElementById("diag");
   if (!box) {
     const label = document.createElement("div");
     label.className = "campo";
-    label.textContent = "Adjuntos / imagenes detectados:";
+    label.textContent = "DIAGNOSTICO firma-imagen:";
     box = document.createElement("pre");
-    box.id = "adjuntos";
-    box.style.cssText = "background:#fff4ce;border:1px solid #ffd666;border-radius:4px;padding:8px;font-size:11px;white-space:pre-wrap;max-height:200px;overflow:auto;margin:2px 0 12px;";
+    box.id = "diag";
+    box.style.cssText = "background:#fff4ce;border:1px solid #ffd666;border-radius:4px;padding:8px;font-size:11px;white-space:pre-wrap;max-height:260px;overflow:auto;margin:2px 0 12px;";
     const boton = document.getElementById("run");
     boton.parentNode.insertBefore(label, boton);
     boton.parentNode.insertBefore(box, boton);
   }
+
+  let txt = "== cids en el ULTIMO mensaje (HTML) ==\n";
+  txt += cidsUltimo.length ? cidsUltimo.join("\n") : "(ninguno)";
+  txt += "\n\n== Adjuntos / imagenes ==\n";
   if (!adjuntos.length) {
-    box.textContent = "(no se detectaron adjuntos ni imagenes)";
-    return;
+    txt += "(no se detectaron)";
+  } else {
+    adjuntos.forEach((a, i) => {
+      const casa = a.contentId && cidsUltimo.includes(a.contentId);
+      txt += (i + 1) + ") " + (a.nombre || "(sin nombre)") +
+        "\n   tipo: " + a.tipo +
+        "\n   tamano: " + a.tamano + " bytes" +
+        "\n   inline: " + a.inline +
+        "\n   contentId: " + (a.contentId || "(NO disponible)") +
+        "\n   >>> " + (casa ? "COINCIDE con el ultimo mensaje" : "no coincide / sin dato") +
+        "\n\n";
+    });
   }
-  box.textContent = adjuntos.map((a, i) =>
-    (i + 1) + ") " + (a.nombre || "(sin nombre)") +
-    "\n   tipo: " + a.tipo +
-    "\n   inline: " + a.inline +
-    "\n   clase: " + a.clase +
-    "\n   tamano: " + a.tamano + " bytes"
-  ).join("\n\n");
+  box.textContent = txt;
 }
