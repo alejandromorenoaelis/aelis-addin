@@ -1,6 +1,6 @@
 // =====================================================================
 //  URL del flujo de Power Automate (disparador "Cuando se recibe una
-//  solicitud HTTP"). Pegala entre las comillas tras crear el flujo.
+//  solicitud HTTP").
 // =====================================================================
 const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7d726e3867224b58a544c874afb6f4be/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=aUXN-WDHSlIjy5RIuXp3tUeXvMvd1fLeluvpG7aWUB4";
 
@@ -27,10 +27,10 @@ Office.onReady(() => {
   boton.onclick = extraerFirma;
 });
 
-// Lee el cuerpo del correo en texto plano.
-function leerCuerpo() {
+// Lee el cuerpo del correo en el formato indicado ("text" o "html").
+function leerCuerpo(formato) {
   return new Promise((resolve) => {
-    Office.context.mailbox.item.body.getAsync("text", (res) => {
+    Office.context.mailbox.item.body.getAsync(formato, (res) => {
       resolve(res.status === Office.AsyncResultStatus.Succeeded ? res.value : "");
     });
   });
@@ -61,9 +61,17 @@ async function extraerFirma() {
   const status = document.getElementById("status");
 
   status.textContent = "Leyendo el correo...";
-  const completo = await leerCuerpo();
-  datosCorreo.cuerpoCompleto = completo;
-  datosCorreo.cuerpo = aislarUltimoMensaje(completo);
+
+  // Leemos el cuerpo en texto (para parsear) y en HTML (para mailto/tel/web).
+  const [textoCompleto, htmlCompleto] = await Promise.all([
+    leerCuerpo("text"),
+    leerCuerpo("html")
+  ]);
+
+  datosCorreo.cuerpoCompleto = textoCompleto;
+  datosCorreo.cuerpo = aislarUltimoMensaje(textoCompleto);
+  datosCorreo.cuerpoHtml = htmlCompleto;
+
   mostrarPreview(datosCorreo.cuerpo);
 
   if (!FLOW_URL) {
