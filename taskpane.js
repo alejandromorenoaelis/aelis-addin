@@ -8,9 +8,10 @@ const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.a
 // un separador o un pixel de seguimiento.
 const TAMANO_MINIMO = 15360; // 15 KB
 
-// Numero maximo de imagenes que se envian al flujo. La firma completa suele
-// ser la imagen mas pesada del correo; enviar mas gasta creditos de AI Builder.
-const MAX_IMAGENES = 1;
+// Imagenes que se envian al flujo. Se mandan varias porque el cruce por cid es
+// heuristico; el flujo valida cual es la buena comparando dominios y deja de
+// hacer OCR en cuanto una valida.
+const MAX_IMAGENES = 3;
 
 // Poner en true para ver el detalle de los adjuntos en la consola del panel.
 const DEBUG = true;
@@ -74,6 +75,15 @@ function cortarHtmlUltimoMensaje(html) {
   return html.slice(0, corte);
 }
 
+// Devuelve los identificadores cid: referenciados en un fragmento de HTML.
+function extraerCids(html) {
+  const set = new Set();
+  const re = /cid:([^"'\s>&]+)/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) set.add(m[1].toLowerCase());
+  return [...set];
+}
+
 function leerContenidoAdjunto(id) {
   return new Promise((resolve) => {
     if (typeof Office.context.mailbox.item.getAttachmentContentAsync !== "function") {
@@ -99,27 +109,45 @@ function leerContenidoAdjunto(id) {
 }
 
 // Selecciona las imagenes candidatas a ser la firma del remitente.
-// No se cruzan los cid: del HTML porque AttachmentDetails no expone contentId
-// en modo lectura; se filtra por tipo, inline y tamano, y se ordena por peso.
-function seleccionarImagenesFirma() {
+//
+// AttachmentDetails no expone contentId en modo lectura, asi que el cruce se
+// hace por la convencion de Outlook: el cid suele empezar por el nombre del
+// adjunto (image001.png@01DA...). Se cruza contra el HTML ya recortado al
+// ultimo mensaje del hilo, para no coger las firmas de mensajes anteriores.
+//
+// Si el cruce no encuentra nada (otro cliente de correo, otra convencion de
+// nombres) se cae a todas las candidatas ordenadas por peso, y sera el flujo
+// quien descarte las que no correspondan al remitente.
+function seleccionarImagenesFirma(htmlUltimoMensaje) {
   const adjuntos = Office.context.mailbox.item.attachments || [];
+  const cids = extraerCids(htmlUltimoMensaje || "");
 
   log("Adjuntos recibidos:", adjuntos.length,
       adjuntos.map((a) => ({
         nombre: a.name, tipo: a.contentType, tam: a.size, inline: a.isInline
       })));
 
-  const candidatas = adjuntos
-    .filter((a) =>
-      a.isInline === true &&
-      (a.contentType || "").indexOf("image/") === 0 &&
-      Number(a.size) >= TAMANO_MINIMO
-    )
-    .sort((a, b) => Number(b.size) - Number(a.size));
+  const candidatas = adjuntos.filter((a) =>
+    a.isInline === true &&
+    (a.contentType || "").indexOf("image/") === 0 &&
+    Number(a.size) >= TAMANO_MINIMO
+  );
 
-  log("Candidatas tras filtrar:", candidatas.length);
+  const delUltimo = candidatas.filter((a) => {
+    const base = (a.name || "").toLowerCase();
+    return base && cids.some((c) => c.indexOf(base) === 0);
+  });
 
-  return candidatas.slice(0, MAX_IMAGENES);
+  log("cids del ultimo mensaje:", cids);
+  log("Candidatas tras filtrar:", candidatas.length,
+      "| del ultimo mensaje:", delUltimo.length,
+      delUltimo.length ? "(se usa el cruce por cid)" : "(sin cruce: se usan todas)");
+
+  const seleccion = delUltimo.length ? delUltimo : candidatas;
+
+  return seleccion
+    .sort((a, b) => Number(b.size) - Number(a.size))
+    .slice(0, MAX_IMAGENES);
 }
 
 // ---------- accion principal ----------
@@ -135,7 +163,7 @@ async function extraerFirma() {
     datosCorreo.cuerpo = aislarUltimoMensaje(texto);
     datosCorreo.cuerpoHtml = cortarHtmlUltimoMensaje(html);
 
-    const seleccion = seleccionarImagenesFirma();
+    const seleccion = seleccionarImagenesFirma(datosCorreo.cuerpoHtml);
 
     const imagenes = [];
     for (const a of seleccion) {
@@ -146,7 +174,8 @@ async function extraerFirma() {
     }
     datosCorreo.imagenesFirma = imagenes;
 
-    log("Imagenes con contenido leido:", imagenes.length);
+    log("Imagenes con contenido leido:", imagenes.length,
+        imagenes.map((i) => i.nombre));
     rellenarDetalle(datosCorreo.cuerpo, imagenes);
 
     if (!FLOW_URL) {
@@ -180,7 +209,7 @@ async function extraerFirma() {
 function exito(imagenes) {
   const sub = imagenes.length
     ? "Firma detectada en imagen \u00b7 " + imagenes.length +
-      (imagenes.length === 1 ? " imagen procesada" : " imagenes procesadas")
+      (imagenes.length === 1 ? " imagen enviada" : " imagenes enviadas")
     : "Firma detectada en el texto del correo.";
   estado("ok", "Firma enviada", sub);
 }
