@@ -1,15 +1,25 @@
 // =====================================================================
+//  Aelis · Extraer firma — panel de tareas
 //  URL del flujo de Power Automate.
 // =====================================================================
 const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7d726e3867224b58a544c874afb6f4be/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=aUXN-WDHSlIjy5RIuXp3tUeXvMvd1fLeluvpG7aWUB4";
 
-const TAMANO_MINIMO = 5120; // 5 KB
-const DEBUG = true;         // pon a false cuando esté validado
+// Tamano minimo para considerar que una imagen es una firma y no un icono,
+// un separador o un pixel de seguimiento.
+const TAMANO_MINIMO = 15360; // 15 KB
+
+// Imagenes que se envian al flujo. Se mandan varias porque el cruce por cid es
+// heuristico; el flujo valida cual es la buena comparando dominios.
+const MAX_IMAGENES = 3;
+
+// Poner en true para ver el detalle en la consola del panel.
+const DEBUG = true;
 
 let datosCorreo = {};
 
 const $ = (id) => document.getElementById(id);
-const log = (...a) => { if (DEBUG) console.log("[FIRMA]", ...a); };
+
+const log = (...args) => { if (DEBUG) console.log("[Aelis firma]", ...args); };
 
 Office.onReady(() => {
   const item = Office.context.mailbox.item;
@@ -17,7 +27,11 @@ Office.onReady(() => {
     remitente: item.from ? item.from.emailAddress : "",
     nombreRemitente: item.from ? item.from.displayName : "",
     asunto: item.subject || "",
-    fecha: item.dateTimeCreated
+    fecha: item.dateTimeCreated,
+    // Email del usuario del buzon. Permite al flujo decidir, segun despliegue,
+    // si se descartan las firmas del propio dominio del usuario.
+    usuarioActual: (Office.context.mailbox.userProfile &&
+                    Office.context.mailbox.userProfile.emailAddress) || ""
   };
   $("remitente").textContent = datosCorreo.remitente || "\u2014";
   $("asunto").textContent = datosCorreo.asunto || "\u2014";
@@ -25,6 +39,9 @@ Office.onReady(() => {
   const boton = $("run");
   boton.disabled = false;
   boton.onclick = extraerFirma;
+
+  log("Requirement set 1.8 disponible:",
+      Office.context.requirements.isSetSupported("Mailbox", "1.8"));
 });
 
 // ---------- lectura del correo ----------
@@ -36,155 +53,213 @@ function leerCuerpo(formato) {
   });
 }
 
-// CORREGIDO: Outlook no siempre pone salto de línea antes de "De:".
-// En el cuerpo en texto plano suele venir como "...saludos.    De: Nombre <mail>"
-function aislarUltimoMensaje(texto) {
-  const seps = [
-    /\s{2,}De:\s*[A-ZÁÉÍÓÚÑ]/,        // "  De: Alejandro"
-    /\s{2,}From:\s*[A-Z]/,            // "  From: John"
-    /\s{2,}Enviado el:\s/i,
-    /\s{2,}Enviado:\s/i,
-    /\r?\nDe:\s/i,
-    /\r?\nFrom:\s/i,
-    /-----\s*Mensaje original\s*-----/i,
-    /-----\s*Original Message\s*-----/i,
-    /\r?\nEl .*escribio:/i,
-    /\r?\nOn .*wrote:/i,
-    /\r?\n_{5,}/,
-    /\r?\nEnviado desde/i
-  ];
+// Aplica una lista de patrones y devuelve el texto cortado por el primero
+// que aparezca. Si ninguno casa, devuelve el texto intacto.
+function cortarPorPrimerPatron(texto, patrones) {
   let corte = texto.length;
-  for (const re of seps) {
+  for (const re of patrones) {
     const i = texto.search(re);
     if (i !== -1 && i < corte) corte = i;
   }
-  return texto.slice(0, corte).trim();
+  return texto.slice(0, corte);
 }
 
-// CORREGIDO: los marcadores anteriores no coincidían con el HTML que
-// genera Outlook actualmente (border-top:solid #E1E1E1 1.0pt / De:</span></b>)
+// Recorta el texto para quedarse solo con el mensaje mas reciente del hilo.
+//
+// IMPORTANTE: los patrones NO exigen salto de linea antes del encabezado.
+// Al convertir el HTML a texto plano, Outlook web pega el "De:" al final del
+// parrafo anterior ("...puedan derivarse De: Alejandro Moreno <...>"), asi que
+// anclar en \n hacia que el corte no se aplicase nunca.
+function aislarUltimoMensaje(texto) {
+  const seps = [
+    // Encabezado citado con email entre angulos: "De: Nombre <a@b.com>"
+    /\s(?:De|From|Von|Da|De la part de):\s*[^<\n]{0,80}<[^>@\s]+@[^>\s]+>/i,
+    // Encabezado citado sin angulos, seguido de "Enviado el" / "Sent"
+    /\s(?:De|From):\s.{0,80}?\s(?:Enviado el|Enviado|Sent|Gesendet):/i,
+    // Separadores clasicos
+    /-----\s*Mensaje original\s*-----/i,
+    /-----\s*Original Message\s*-----/i,
+    // Gmail y Apple Mail
+    /\s?El\s.{0,140}?escribi[oó]:/i,
+    /\s?On\s.{0,140}?wrote:/i,
+    // Otros
+    /\r?\n_{5,}/,
+    /\r?\nEnviado desde/i,
+    /\r?\nObtener Outlook para/i
+  ];
+  return cortarPorPrimerPatron(texto, seps).trim();
+}
+
+// Quita los avisos legales y coletillas del pie. Aportan ruido (razones
+// sociales distintas, buzones de proteccion de datos) que despista al modelo.
+function quitarAvisoLegal(texto) {
+  const marc = [
+    /De conformidad con el Reglamento/i,
+    /En cumplimiento de lo establecido/i,
+    /Colaboremos con el medio ambiente/i,
+    /Este mensaje y cualquier documento/i,
+    /Este correo electr[oó]nico y sus/i,
+    /La informaci[oó]n contenida en este/i,
+    /Antes de imprimir este/i,
+    /This e?-?mail (?:and any|message) /i,
+    /The information contained in this/i
+  ];
+  return cortarPorPrimerPatron(texto, marc).trim();
+}
+
+// Recorta el HTML por el inicio del mensaje citado.
+// OJO: no se corta por el div de firma (id="...Signature..."), porque ese div
+// ES la firma del remitente, que es justo lo que queremos conservar.
 function cortarHtmlUltimoMensaje(html) {
   const marc = [
     /id="[^"]*divRplyFwdMsg[^"]*"/i,
-    /border-top:\s*solid/i,
-    /border-top:[^;"]*1(\.0)?pt/i,
-    /De:\s*<\/span>\s*<\/b>/i,
-    /From:\s*<\/span>\s*<\/b>/i,
-    /<b>\s*De:\s*<\/b>/i,
-    /<b>\s*From:\s*<\/b>/i,
-    /class="[^"]*gmail_quote[^"]*"/i
+    /class="[^"]*gmail_quote[^"]*"/i,
+    /<blockquote[^>]*type="cite"/i,
+    />\s*(?:De|From):\s*<\/b>/i,
+    /border-top:\s?1pt solid/i
   ];
-  let corte = html.length;
-  for (const re of marc) {
-    const i = html.search(re);
-    if (i !== -1 && i < corte) corte = i;
-  }
-  return html.slice(0, corte);
+  return cortarPorPrimerPatron(html, marc);
 }
 
+// Devuelve los identificadores cid: referenciados en un fragmento de HTML.
 function extraerCids(html) {
   const set = new Set();
   const re = /cid:([^"'\s>&]+)/gi;
   let m;
-  while ((m = re.exec(html)) !== null) set.add(m[1]);
+  while ((m = re.exec(html)) !== null) set.add(m[1].toLowerCase());
   return [...set];
-}
-
-// Solo los CID que aparecen en la zona del mensaje del remitente,
-// es decir, antes del primer bloque citado. Sin respaldo al HTML
-// completo: es preferible no detectar imagen (y caer a firma en
-// texto) que procesar las imágenes de nuestra propia firma.
-function extraerCidsFirmaRemitente(html) {
-  const zona = cortarHtmlUltimoMensaje(html);
-  log("HTML total:", html.length, "| zona remitente:", zona.length);
-  return extraerCids(zona);
 }
 
 function leerContenidoAdjunto(id) {
   return new Promise((resolve) => {
+    if (typeof Office.context.mailbox.item.getAttachmentContentAsync !== "function") {
+      log("getAttachmentContentAsync no disponible: requiere Mailbox 1.8");
+      resolve(null);
+      return;
+    }
     try {
       Office.context.mailbox.item.getAttachmentContentAsync(id, (res) => {
         if (res.status === Office.AsyncResultStatus.Succeeded && res.value &&
             res.value.format === Office.MailboxEnums.AttachmentContentFormat.Base64) {
           resolve(res.value.content);
-        } else { resolve(null); }
+        } else {
+          log("No se pudo leer el adjunto", id, res.error ? res.error.message : "");
+          resolve(null);
+        }
       });
-    } catch (e) { resolve(null); }
+    } catch (e) {
+      log("Excepcion leyendo el adjunto", id, e.message);
+      resolve(null);
+    }
   });
 }
 
-// ---------- acción principal ----------
+// Selecciona las imagenes candidatas a ser la firma del remitente.
+//
+// AttachmentDetails no expone contentId en modo lectura, asi que el cruce se
+// hace por la convencion de Outlook: el cid suele empezar por el nombre del
+// adjunto (image001.png@01DA...). Se cruza contra el HTML ya recortado al
+// ultimo mensaje. Si el cruce no da nada, se usan todas las candidatas y sera
+// el flujo quien descarte las que no correspondan al remitente.
+function seleccionarImagenesFirma(htmlUltimoMensaje) {
+  const adjuntos = Office.context.mailbox.item.attachments || [];
+  const cids = extraerCids(htmlUltimoMensaje || "");
+
+  log("Adjuntos recibidos:", adjuntos.length,
+      adjuntos.map((a) => ({
+        nombre: a.name, tipo: a.contentType, tam: a.size, inline: a.isInline
+      })));
+
+  const candidatas = adjuntos.filter((a) =>
+    a.isInline === true &&
+    (a.contentType || "").indexOf("image/") === 0 &&
+    Number(a.size) >= TAMANO_MINIMO
+  );
+
+  const delUltimo = candidatas.filter((a) => {
+    const base = (a.name || "").toLowerCase();
+    return base && cids.some((c) => c.indexOf(base) === 0);
+  });
+
+  log("cids del ultimo mensaje:", cids);
+  log("Candidatas:", candidatas.length, "| del ultimo mensaje:", delUltimo.length,
+      delUltimo.length ? "(cruce por cid aplicado)" : "(sin cruce: se usan todas)");
+
+  const seleccion = delUltimo.length ? delUltimo : candidatas;
+
+  return seleccion
+    .sort((a, b) => Number(b.size) - Number(a.size))
+    .slice(0, MAX_IMAGENES);
+}
+
+// ---------- accion principal ----------
 async function extraerFirma() {
   const boton = $("run");
   boton.disabled = true;
-  boton.innerHTML = '<span class="spin"></span> Analizando…';
-  estado("work", "Analizando la firma…", "Leyendo el correo y sus imágenes.");
-
-  const [texto, html] = await Promise.all([leerCuerpo("text"), leerCuerpo("html")]);
-  datosCorreo.cuerpoCompleto = texto;
-  datosCorreo.cuerpo = aislarUltimoMensaje(texto);
-  datosCorreo.cuerpoHtml = html;
-
-  log("cuerpoCompleto:", texto.length, "chars | cuerpo aislado:", datosCorreo.cuerpo.length, "chars");
-  if (datosCorreo.cuerpo.length === texto.length) {
-    console.warn("[FIRMA] El cuerpo NO se ha recortado: revisa los separadores.");
-  }
-
-  // imágenes de la firma del remitente
-  const cids = extraerCidsFirmaRemitente(html);
-  const adjuntos = Office.context.mailbox.item.attachments || [];
-
-  log("CIDs zona remitente:", cids);
-  if (DEBUG) {
-    adjuntos.forEach((a) => log(
-      a.name,
-      "| inline:", a.isInline,
-      "| tipo:", a.contentType,
-      "| cid:", a.contentId,
-      "| enZona:", cids.includes(a.contentId),
-      "| tamOK:", a.size >= TAMANO_MINIMO
-    ));
-  }
-
-  const candidatas = adjuntos.filter((a) =>
-    a.isInline && (a.contentType || "").indexOf("image/") === 0 &&
-    a.contentId && cids.includes(a.contentId) && a.size >= TAMANO_MINIMO
-  );
-  log("Candidatas:", candidatas.length);
-
-  const imagenes = [];
-  for (const a of candidatas) {
-    const b64 = await leerContenidoAdjunto(a.id);
-    if (b64) imagenes.push({ nombre: a.name, tipo: a.contentType, tamano: a.size, base64: b64 });
-  }
-  datosCorreo.imagenesFirma = imagenes;
-
-  rellenarDetalle(datosCorreo.cuerpo, imagenes);
-
-  if (!FLOW_URL) {
-    estado("ok", "Todo listo", "Configura la conexión con Power Automate para enviar.");
-    resetBoton();
-    return;
-  }
+  boton.innerHTML = '<span class="spin"></span> Analizando\u2026';
+  estado("work", "Analizando la firma\u2026", "Leyendo el correo y sus imagenes.");
 
   try {
+    const [texto, html] = await Promise.all([leerCuerpo("text"), leerCuerpo("html")]);
+
+    datosCorreo.cuerpoCompleto = texto;
+    datosCorreo.cuerpo = quitarAvisoLegal(aislarUltimoMensaje(texto));
+    datosCorreo.cuerpoHtml = cortarHtmlUltimoMensaje(html);
+
+    log("Longitud cuerpo original:", texto.length,
+        "| tras recortar:", datosCorreo.cuerpo.length);
+    if (datosCorreo.cuerpo.length === texto.length) {
+      log("AVISO: el recorte no encontro ningun separador. El cuerpo puede " +
+          "contener mensajes citados. La validacion por dominio del flujo es " +
+          "la que debe filtrar en este caso.");
+    }
+
+    const seleccion = seleccionarImagenesFirma(datosCorreo.cuerpoHtml);
+
+    const imagenes = [];
+    for (const a of seleccion) {
+      const b64 = await leerContenidoAdjunto(a.id);
+      if (b64) {
+        imagenes.push({ nombre: a.name, tipo: a.contentType, tamano: a.size, base64: b64 });
+      }
+    }
+    datosCorreo.imagenesFirma = imagenes;
+
+    log("Imagenes con contenido leido:", imagenes.length, imagenes.map((i) => i.nombre));
+    rellenarDetalle(datosCorreo.cuerpo, imagenes);
+
+    if (!FLOW_URL) {
+      estado("ok", "Todo listo", "Configura la conexion con Power Automate para enviar.");
+      return;
+    }
+
     const res = await fetch(FLOW_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=UTF-8" },
       body: JSON.stringify(datosCorreo)
     });
-    if (res.ok) exito(imagenes);
-    else estado("err", "No se pudo procesar", "El flujo respondió con el código " + res.status + ". Inténtalo de nuevo.");
+
+    if (res.ok) {
+      exito(imagenes);
+    } else {
+      const detalle = await res.text().catch(() => "");
+      log("El flujo respondio", res.status, detalle);
+      estado("err", "No se pudo procesar",
+             "El flujo respondio con el codigo " + res.status + ". Revisa el historial de ejecuciones.");
+    }
   } catch (e) {
-    // Puede ser CORS al leer la respuesta; el envío suele haberse completado.
-    exito(imagenes);
+    log("Error en extraerFirma:", e);
+    estado("err", "No se pudo enviar",
+           (e && e.message ? e.message : "Error de red") + ". Revisa la consola del panel.");
+  } finally {
+    resetBoton();
   }
-  resetBoton();
 }
 
 function exito(imagenes) {
   const sub = imagenes.length
-    ? "Firma detectada en imagen · " + imagenes.length + (imagenes.length === 1 ? " imagen procesada" : " imágenes procesadas")
+    ? "Firma detectada en imagen \u00b7 " + imagenes.length +
+      (imagenes.length === 1 ? " imagen enviada" : " imagenes enviadas")
     : "Firma detectada en el texto del correo.";
   estado("ok", "Firma enviada", sub);
 }
@@ -211,8 +286,8 @@ function estado(tipo, msg, sub) {
 
 function rellenarDetalle(texto, imagenes) {
   $("detalle").hidden = false;
-  $("preview").textContent = texto || "(vacío)";
+  $("preview").textContent = texto || "(vacio)";
   $("imgs").textContent = imagenes.length
-    ? imagenes.map((im) => "• " + im.nombre + " (" + Math.round(im.tamano / 1024) + " KB)").join("\n")
-    : "Sin imágenes (firma en texto).";
+    ? imagenes.map((im) => "\u2022 " + im.nombre + " (" + Math.round(im.tamano / 1024) + " KB)").join("\n")
+    : "Sin imagenes (firma en texto).";
 }
