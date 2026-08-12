@@ -10,6 +10,7 @@
       --dark:#001C0B; --green:#5EFCA1; --green-deep:#0E7A4B;
       --ink:#12211A; --muted:#6B7C74; --surface:#FFFFFF;
       --surface-2:#F4F7F5; --line:#E4EAE7; --danger:#B4291F;
+      --warn:#8A5A00; --warn-bg:#FFF8E8; --warn-line:#F0D9A8;
     }
     *{box-sizing:border-box;}
     html,body{margin:0;padding:0;}
@@ -72,9 +73,20 @@
     .status .sub{font-weight:400; color:var(--muted); font-size:12.5px; margin-top:2px;}
     .status.ok{background:#EAF8F0; border:1px solid #B7E6CC;}
     .status.ok .msg{color:var(--green-deep);}
+    .status.warn{background:var(--warn-bg); border:1px solid var(--warn-line);}
+    .status.warn .msg{color:var(--warn);}
     .status.work{background:var(--surface-2); border:1px solid var(--line); color:var(--muted);}
     .status.err{background:#FBECEA; border:1px solid #F0C3BE;}
     .status.err .msg{color:var(--danger);}
+
+    /* Iconos circulares de aviso y error, al mismo tamano que el check */
+    .badge{
+      width:20px; height:20px; border-radius:50%; display:inline-flex;
+      align-items:center; justify-content:center;
+      color:#fff; font-size:13px; font-weight:800; line-height:1;
+    }
+    .badge.warn{background:var(--warn);}
+    .badge.err{background:var(--danger);}
 
     /* Check dibujado */
     .check{width:20px;height:20px;}
@@ -131,6 +143,8 @@
     </details>
   </main>
 
-  <script src="taskpane.js"></script>
+  <!-- Subir el numero de version cada vez que se cambie el JS.
+       Evita que Outlook siga sirviendo la version cacheada. -->
+  <script src="taskpane.js?v=3"></script>
 </body>
 </html>

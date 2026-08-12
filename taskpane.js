@@ -275,7 +275,7 @@ function mostrarResultado(data, imagenes) {
   }
 
   if (estadoFlujo === "contacto_existente") {
-    estado("ok", "Ya registrado",
+    estado("warn", "Ya registrado",
            (data.nombre ? data.nombre + " ya existe" : "Este contacto ya existe") +
            " en Kerberos. No se ha duplicado.");
     return;
@@ -317,8 +317,10 @@ function estado(tipo, msg, sub) {
   box.className = "status " + tipo;
   const ico = tipo === "ok"
     ? '<svg class="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l3.5 3.5 7.5-8"/></svg>'
+    : tipo === "warn"
+    ? '<span class="badge warn">i</span>'
     : tipo === "err"
-    ? '<span class="ico" style="color:var(--danger);font-weight:800;">!</span>'
+    ? '<span class="badge err">!</span>'
     : '<span class="spin"></span>';
   box.innerHTML = '<span class="ico">' + ico + '</span><div><div class="msg">' +
     msg + '</div><div class="sub">' + (sub || "") + '</div></div>';
