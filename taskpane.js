@@ -282,12 +282,19 @@ function mostrarResultado(data, imagenes) {
   }
 
   if (estadoFlujo === "cuenta_no_resuelta") {
+    // "candidatas" son las empresas que han casado por dominio o telefono.
+    // "cuentas" es el listado completo de Kerberos, para el selector manual.
+    // Son cosas distintas: 0 candidatas con 40 cuentas en el listado significa
+    // que no se ha encontrado ninguna, no que haya 40 posibles.
+    const candidatas = Array.isArray(data.candidatas) ? data.candidatas : [];
     const cuentas = Array.isArray(data.cuentas) ? data.cuentas : [];
-    log("Cuentas candidatas:", cuentas.length, cuentas.map((c) => c.name));
+
+    log("Candidatas:", candidatas.length, candidatas.map((c) => c.name));
+    log("Cuentas disponibles para elegir:", cuentas.length);
+
     estado("err", "Falta la empresa",
-           cuentas.length > 1
-             ? "Se han encontrado " + cuentas.length +
-               " empresas posibles. Hay que elegir una."
+           candidatas.length > 1
+             ? "Hay " + candidatas.length + " empresas posibles. Hay que elegir una."
              : "No se ha podido determinar a que empresa pertenece.");
     return;
   }
