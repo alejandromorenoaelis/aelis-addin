@@ -240,7 +240,9 @@ async function extraerFirma() {
     });
 
     if (res.ok) {
-      exito(imagenes);
+      const data = await res.json().catch(() => ({}));
+      log("Respuesta del flujo:", data);
+      mostrarResultado(data, imagenes);
     } else {
       const detalle = await res.text().catch(() => "");
       log("El flujo respondio", res.status, detalle);
@@ -254,6 +256,44 @@ async function extraerFirma() {
   } finally {
     resetBoton();
   }
+}
+
+// Interpreta el campo "estado" que devuelven los Response del flujo.
+// Cada rama del flujo responde con un estado distinto:
+//   creado              -> contacto dado de alta en Kerberos
+//   contacto_existente  -> ya estaba registrado, no se ha duplicado
+//   cuenta_no_resuelta  -> no se ha podido determinar la empresa
+function mostrarResultado(data, imagenes) {
+  const estadoFlujo = (data && data.estado) || "";
+
+  if (estadoFlujo === "creado") {
+    const nombre = [data.name, data.surnames].filter(Boolean).join(" ");
+    estado("ok", "Contacto creado",
+           nombre ? nombre + " se ha dado de alta en Kerberos."
+                  : "Se ha dado de alta en Kerberos.");
+    return;
+  }
+
+  if (estadoFlujo === "contacto_existente") {
+    estado("ok", "Ya registrado",
+           (data.nombre ? data.nombre + " ya existe" : "Este contacto ya existe") +
+           " en Kerberos. No se ha duplicado.");
+    return;
+  }
+
+  if (estadoFlujo === "cuenta_no_resuelta") {
+    const cuentas = Array.isArray(data.cuentas) ? data.cuentas : [];
+    log("Cuentas candidatas:", cuentas.length, cuentas.map((c) => c.name));
+    estado("err", "Falta la empresa",
+           cuentas.length > 1
+             ? "Se han encontrado " + cuentas.length +
+               " empresas posibles. Hay que elegir una."
+             : "No se ha podido determinar a que empresa pertenece.");
+    return;
+  }
+
+  // Sin campo "estado": comportamiento anterior, por compatibilidad.
+  exito(imagenes);
 }
 
 function exito(imagenes) {
