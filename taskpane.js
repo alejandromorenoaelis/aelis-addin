@@ -2,7 +2,7 @@
 //  Aelis · Extraer firma — panel de tareas
 //  URL del flujo de Power Automate.
 // =====================================================================
-const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/7d726e3867224b58a544c874afb6f4be/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=aUXN-WDHSlIjy5RIuXp3tUeXvMvd1fLeluvpG7aWUB4";
+const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/31/workflows/0601eb70d69047f29f0c43d23a4d5851/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jho11aSH74yxjGIJ4cbrxt3gp3wiiRt2oJBLnigImHk";
 
 // Tamano minimo para considerar que una imagen es una firma y no un icono,
 // un separador o un pixel de seguimiento.
