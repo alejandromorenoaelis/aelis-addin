@@ -113,6 +113,51 @@
     }
     .imgs{color:var(--muted); font-size:11.5px;}
 
+    /* ---------- Selector de empresa (vista alternativa) ---------- */
+    .selector{padding:16px 18px 20px;}
+    .sel-titulo{font-size:15px; font-weight:700; margin:0 0 2px;}
+    .sel-sub{font-size:12.5px; color:var(--muted); margin:0 0 14px;}
+
+    .buscador{
+      width:100%; font-family:inherit; font-size:14px; color:var(--ink);
+      padding:11px 12px; border:1px solid var(--line); border-radius:8px;
+      background:var(--surface-2); outline:none;
+    }
+    .buscador:focus{border-color:var(--green-deep); background:var(--surface);}
+
+    .resultados{
+      list-style:none; margin:10px 0 0; padding:0;
+      max-height:260px; overflow-y:auto;
+      border:1px solid var(--line); border-radius:8px;
+    }
+    .resultados:empty{display:none;}
+    .resultados li{
+      padding:10px 12px; cursor:pointer; border-bottom:1px solid var(--line);
+    }
+    .resultados li:last-child{border-bottom:0;}
+    .resultados li:hover{background:var(--surface-2);}
+    .resultados li.vacio{cursor:default; color:var(--muted); font-size:12.5px;}
+    .resultados li.vacio:hover{background:transparent;}
+    .res-nombre{font-weight:600; font-size:13.5px;}
+    .res-meta{font-size:11.5px; color:var(--muted); margin-top:1px;}
+    .res-badge{
+      display:inline-block; font-size:10px; font-weight:700; letter-spacing:.4px;
+      text-transform:uppercase; color:var(--green-deep); background:#EAF8F0;
+      border:1px solid #B7E6CC; border-radius:4px; padding:1px 5px; margin-left:6px;
+    }
+
+    .btn-sec{
+      width:100%; margin-top:12px; border:1px solid var(--line); border-radius:8px;
+      background:var(--surface); color:var(--muted); cursor:pointer;
+      font-family:inherit; font-size:14px; font-weight:600; padding:11px 16px;
+    }
+    .btn-sec:hover{background:var(--surface-2);}
+    .aviso{
+      margin-top:14px; font-size:12px; color:var(--muted);
+      background:var(--surface-2); border:1px solid var(--line);
+      border-radius:8px; padding:10px 12px;
+    }
+
     @media (prefers-reduced-motion: reduce){
       .spin{animation:none;} .check path{animation:none; stroke-dashoffset:0;}
     }
@@ -124,7 +169,7 @@
     <div class="app-sub">Extraer firma</div>
   </header>
 
-  <main class="app-body">
+  <main class="app-body" id="vistaPrincipal">
     <section class="card">
       <div class="row"><span class="k">Remitente</span><span class="v" id="remitente">—</span></div>
       <div class="row"><span class="k">Asunto</span><span class="v" id="asunto">—</span></div>
@@ -143,8 +188,27 @@
     </details>
   </main>
 
+  <!-- Vista alternativa: seleccion manual de empresa.
+       Sustituye a la vista principal cuando el flujo no resuelve la cuenta. -->
+  <section class="selector" id="vistaSelector" hidden>
+    <p class="sel-titulo">Elige la empresa</p>
+    <p class="sel-sub" id="selSub">—</p>
+
+    <input type="text" id="buscador" class="buscador"
+           placeholder="Escribe para buscar…" autocomplete="off" />
+    <ul class="resultados" id="resultados"></ul>
+
+    <div id="selEstado" class="status" hidden></div>
+
+    <button id="cancelar" class="btn-sec">Cancelar</button>
+
+    <div class="aviso">
+      Si la empresa no aparece, primero hay que darla de alta en Kerberos.
+    </div>
+  </section>
+
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=3"></script>
+  <script src="taskpane.js?v=4"></script>
 </body>
 </html>

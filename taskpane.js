@@ -4,6 +4,10 @@
 // =====================================================================
 const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/31/workflows/0601eb70d69047f29f0c43d23a4d5851/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jho11aSH74yxjGIJ4cbrxt3gp3wiiRt2oJBLnigImHk";
 
+// Segundo flujo: recibe la firma ya extraida mas el id de cuenta que elige el
+// usuario en el selector, y crea el contacto en Kerberos.
+const FLOW_CREAR_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/20/workflows/ca4d320adca843e7876ff0d705c11b5d/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=usS_4NNdfG_hdyU0eAu52rYqF_G8L7TSBzWhL2v8nEE";
+
 // Tamano minimo para considerar que una imagen es una firma y no un icono,
 // un separador o un pixel de seguimiento.
 const TAMANO_MINIMO = 15360; // 15 KB
@@ -16,6 +20,10 @@ const MAX_IMAGENES = 3;
 const DEBUG = true;
 
 let datosCorreo = {};
+
+// Datos que devuelve el flujo A cuando no resuelve la cuenta. El panel los
+// guarda para reenviarlos al flujo B junto con la empresa que elija el usuario.
+let pendiente = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -39,6 +47,9 @@ Office.onReady(() => {
   const boton = $("run");
   boton.disabled = false;
   boton.onclick = extraerFirma;
+
+  $("cancelar").onclick = cerrarSelector;
+  $("buscador").oninput = pintarResultados;
 
   log("Requirement set 1.8 disponible:",
       Office.context.requirements.isSetSupported("Mailbox", "1.8"));
@@ -277,7 +288,7 @@ function mostrarResultado(data, imagenes) {
   if (estadoFlujo === "contacto_existente") {
     estado("warn", "Ya registrado",
            (data.nombre ? data.nombre + " ya existe" : "Este contacto ya existe") +
-           " en Kerberos. No se ha duplicado.");
+           " en Kerberos.");
     return;
   }
 
@@ -296,11 +307,180 @@ function mostrarResultado(data, imagenes) {
            candidatas.length > 1
              ? "Hay " + candidatas.length + " empresas posibles. Hay que elegir una."
              : "No se ha podido determinar a que empresa pertenece.");
+
+    abrirSelector(data);
     return;
   }
 
   // Sin campo "estado": comportamiento anterior, por compatibilidad.
   exito(imagenes);
+}
+
+// =====================================================================
+//  Selector de empresa
+//  Cuando el flujo A no resuelve la cuenta, el panel muestra un buscador
+//  sobre el listado de empresas que ese mismo flujo ha devuelto. Al elegir
+//  una, se llama al flujo B con la firma y el id de la cuenta.
+// =====================================================================
+
+// Normaliza para buscar sin acentos ni mayusculas: "FARMACÉUTICO" -> "farmaceutico"
+const norm = (s) => (s || "").toString().toLowerCase()
+  .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+function abrirSelector(data) {
+  const firma = data.firma || {};
+
+  pendiente = {
+    cuentas: Array.isArray(data.cuentas) ? data.cuentas : [],
+    // Ids de las empresas que casaron automaticamente, para destacarlas.
+    idsCandidatas: (Array.isArray(data.candidatas) ? data.candidatas : [])
+      .map((c) => c.id),
+    contacto: {
+      nombre: firma.nombre || "",
+      apellidos: firma.apellidos || "",
+      // El email fiable es el del remitente, no el que traiga la firma.
+      email: datosCorreo.remitente || firma.email || "",
+      cargo: firma.cargo || "",
+      // El flujo ya devuelve el telefono normalizado a 9 digitos.
+      telefono: data.telefono || ""
+    }
+  };
+
+  const c = pendiente.contacto;
+  $("selSub").textContent =
+    [c.nombre, c.apellidos].filter(Boolean).join(" ") + " · " + c.email;
+
+  $("buscador").value = "";
+  $("selEstado").hidden = true;
+  pintarResultados();
+
+  $("vistaPrincipal").hidden = true;
+  $("vistaSelector").hidden = false;
+  $("buscador").focus();
+}
+
+function cerrarSelector() {
+  $("vistaSelector").hidden = true;
+  $("vistaPrincipal").hidden = false;
+  pendiente = null;
+}
+
+function pintarResultados() {
+  const lista = $("resultados");
+  lista.innerHTML = "";
+  if (!pendiente) return;
+
+  const q = norm($("buscador").value.trim());
+
+  // Sin texto se muestran las candidatas automaticas; si no hay, todas.
+  let cuentas = pendiente.cuentas;
+  if (q) {
+    cuentas = cuentas.filter((cu) =>
+      norm(cu.name).includes(q) ||
+      norm(cu.cif).includes(q) ||
+      norm(cu.telephone).includes(q)
+    );
+  }
+
+  if (!cuentas.length) {
+    const li = document.createElement("li");
+    li.className = "vacio";
+    li.textContent = "Ninguna empresa coincide con la busqueda.";
+    lista.appendChild(li);
+    return;
+  }
+
+  // Las que casaron automaticamente van primero.
+  cuentas = cuentas.slice().sort((a, b) => {
+    const ca = pendiente.idsCandidatas.includes(a.id) ? 0 : 1;
+    const cb = pendiente.idsCandidatas.includes(b.id) ? 0 : 1;
+    return ca - cb;
+  });
+
+  cuentas.slice(0, 30).forEach((cu) => {
+    const li = document.createElement("li");
+
+    const nombre = document.createElement("div");
+    nombre.className = "res-nombre";
+    nombre.textContent = cu.name || "(sin nombre)";
+    if (pendiente.idsCandidatas.includes(cu.id)) {
+      const badge = document.createElement("span");
+      badge.className = "res-badge";
+      badge.textContent = "sugerida";
+      nombre.appendChild(badge);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "res-meta";
+    meta.textContent = [cu.cif, cu.billingMunicipality].filter(Boolean).join(" · ");
+
+    li.appendChild(nombre);
+    li.appendChild(meta);
+    li.onclick = () => crearConCuenta(cu);
+    lista.appendChild(li);
+  });
+}
+
+async function crearConCuenta(cuenta) {
+  if (!pendiente) return;
+
+  const caja = $("selEstado");
+  caja.hidden = false;
+  caja.className = "status work";
+  caja.innerHTML = '<span class="ico"><span class="spin"></span></span>' +
+                   '<div><div class="msg">Creando el contacto\u2026</div>' +
+                   '<div class="sub">' + (cuenta.name || "") + '</div></div>';
+
+  const payload = Object.assign({ idCuenta: cuenta.id }, pendiente.contacto);
+  log("Enviando al flujo de creacion:", payload);
+
+  try {
+    const res = await fetch(FLOW_CREAR_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const detalle = await res.text().catch(() => "");
+      log("El flujo de creacion respondio", res.status, detalle);
+      estadoSelector("err", "No se pudo crear",
+                     "El flujo respondio con el codigo " + res.status + ".");
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    log("Respuesta del flujo de creacion:", data);
+
+    // Se cierra el selector y el resultado se muestra en la vista principal.
+    const nombreCuenta = cuenta.name || "";
+    cerrarSelector();
+
+    if (data.estado === "contacto_existente") {
+      estado("warn", "Ya registrado",
+             (data.nombre ? data.nombre + " ya existe" : "Este contacto ya existe") +
+             " en Kerberos.");
+    } else {
+      estado("ok", "Contacto creado",
+             (data.nombre || "El contacto") + " se ha dado de alta en " +
+             (data.cuenta || nombreCuenta) + ".");
+    }
+  } catch (e) {
+    log("Error creando el contacto:", e);
+    estadoSelector("err", "No se pudo crear",
+                   (e && e.message ? e.message : "Error de red") + ".");
+  }
+}
+
+function estadoSelector(tipo, msg, sub) {
+  const caja = $("selEstado");
+  caja.hidden = false;
+  caja.className = "status " + tipo;
+  const ico = tipo === "err"
+    ? '<span class="badge err">!</span>'
+    : '<span class="spin"></span>';
+  caja.innerHTML = '<span class="ico">' + ico + '</span><div><div class="msg">' +
+    msg + '</div><div class="sub">' + (sub || "") + '</div></div>';
 }
 
 function exito(imagenes) {
