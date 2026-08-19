@@ -346,7 +346,9 @@ function abrirSelector(data) {
       email: datosCorreo.remitente || firma.email || "",
       cargo: firma.cargo || "",
       // El flujo ya devuelve el telefono normalizado a 9 digitos.
-      telefono: data.telefono || ""
+      telefono: data.telefono || "",
+      // El flujo ya devuelve el movil normalizado a 9 digitos.
+      movil: data.movil || ""
     }
   };
 
@@ -461,7 +463,7 @@ function ponerDato(id, valor) {
     el.textContent = valor;
     el.className = "v";
   } else {
-    el.textContent = "sin dato";
+    el.textContent = "Sin datos";
     el.className = "v vacio";
   }
 }
