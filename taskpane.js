@@ -50,6 +50,8 @@ Office.onReady(() => {
 
   $("cancelar").onclick = cerrarSelector;
   $("buscador").oninput = pintarResultados;
+  $("volver").onclick = volverAlSelector;
+  $("confirmar").onclick = crearContacto;
 
   log("Requirement set 1.8 disponible:",
       Office.context.requirements.isSetSupported("Mailbox", "1.8"));
@@ -335,6 +337,8 @@ function abrirSelector(data) {
     // Ids de las empresas que casaron automaticamente, para destacarlas.
     idsCandidatas: (Array.isArray(data.candidatas) ? data.candidatas : [])
       .map((c) => c.id),
+    // Empresa que el usuario ha pulsado, pendiente de confirmar.
+    seleccionada: null,
     contacto: {
       nombre: firma.nombre || "",
       apellidos: firma.apellidos || "",
@@ -355,12 +359,14 @@ function abrirSelector(data) {
   pintarResultados();
 
   $("vistaPrincipal").hidden = true;
+  $("vistaConfirmar").hidden = true;
   $("vistaSelector").hidden = false;
   $("buscador").focus();
 }
 
 function cerrarSelector() {
   $("vistaSelector").hidden = true;
+  $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
   pendiente = null;
 }
@@ -416,20 +422,65 @@ function pintarResultados() {
 
     li.appendChild(nombre);
     li.appendChild(meta);
-    li.onclick = () => crearConCuenta(cu);
+    li.onclick = () => abrirConfirmacion(cu);
     lista.appendChild(li);
   });
 }
 
-async function crearConCuenta(cuenta) {
+// Paso intermedio: en vez de crear al pulsar en la lista, se muestra un
+// resumen de lo que se va a escribir en el CRM. Es el unico momento en que el
+// usuario puede detectar un dato mal extraido antes de que llegue a Kerberos.
+function abrirConfirmacion(cuenta) {
   if (!pendiente) return;
+  pendiente.seleccionada = cuenta;
 
-  const caja = $("selEstado");
-  caja.hidden = false;
-  caja.className = "status work";
-  caja.innerHTML = '<span class="ico"><span class="spin"></span></span>' +
-                   '<div><div class="msg">Creando el contacto\u2026</div>' +
-                   '<div class="sub">' + (cuenta.name || "") + '</div></div>';
+  const c = pendiente.contacto;
+
+  $("confEmpresa").textContent = cuenta.name || "(sin nombre)";
+  $("confEmpresaMeta").textContent =
+    [cuenta.cif, cuenta.billingMunicipality].filter(Boolean).join(" \u00b7 ") || "\u2014";
+
+  ponerDato("confNombre", [c.nombre, c.apellidos].filter(Boolean).join(" "));
+  ponerDato("confEmail", c.email);
+  ponerDato("confCargo", c.cargo);
+  ponerDato("confTelefono", c.telefono);
+
+  $("confEstado").hidden = true;
+  $("confirmar").disabled = false;
+  $("confirmar").textContent = "Crear contacto";
+
+  $("vistaSelector").hidden = true;
+  $("vistaConfirmar").hidden = false;
+}
+
+// Pinta un dato, marcando en gris los que vengan vacios para que el usuario
+// vea que ese campo se guardara sin valor.
+function ponerDato(id, valor) {
+  const el = $(id);
+  if (valor) {
+    el.textContent = valor;
+    el.className = "v";
+  } else {
+    el.textContent = "sin dato";
+    el.className = "v vacio";
+  }
+}
+
+function volverAlSelector() {
+  $("vistaConfirmar").hidden = true;
+  $("vistaSelector").hidden = false;
+  if (pendiente) pendiente.seleccionada = null;
+  $("buscador").focus();
+}
+
+async function crearContacto() {
+  if (!pendiente || !pendiente.seleccionada) return;
+
+  const cuenta = pendiente.seleccionada;
+  const boton = $("confirmar");
+  boton.disabled = true;
+  boton.innerHTML = '<span class="spin"></span> Creando\u2026';
+  estadoConf("work", "Creando el contacto\u2026", cuenta.name || "");
 
   const payload = Object.assign({ idCuenta: cuenta.id }, pendiente.contacto);
   log("Enviando al flujo de creacion:", payload);
@@ -444,15 +495,16 @@ async function crearConCuenta(cuenta) {
     if (!res.ok) {
       const detalle = await res.text().catch(() => "");
       log("El flujo de creacion respondio", res.status, detalle);
-      estadoSelector("err", "No se pudo crear",
-                     "El flujo respondio con el codigo " + res.status + ".");
+      estadoConf("err", "No se pudo crear",
+                 "El flujo respondio con el codigo " + res.status + ".");
+      boton.disabled = false;
+      boton.textContent = "Reintentar";
       return;
     }
 
     const data = await res.json().catch(() => ({}));
     log("Respuesta del flujo de creacion:", data);
 
-    // Se cierra el selector y el resultado se muestra en la vista principal.
     const nombreCuenta = cuenta.name || "";
     cerrarSelector();
 
@@ -467,13 +519,15 @@ async function crearConCuenta(cuenta) {
     }
   } catch (e) {
     log("Error creando el contacto:", e);
-    estadoSelector("err", "No se pudo crear",
-                   (e && e.message ? e.message : "Error de red") + ".");
+    estadoConf("err", "No se pudo crear",
+               (e && e.message ? e.message : "Error de red") + ".");
+    boton.disabled = false;
+    boton.textContent = "Reintentar";
   }
 }
 
-function estadoSelector(tipo, msg, sub) {
-  const caja = $("selEstado");
+function estadoConf(tipo, msg, sub) {
+  const caja = $("confEstado");
   caja.hidden = false;
   caja.className = "status " + tipo;
   const ico = tipo === "err"

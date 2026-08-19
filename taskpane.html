@@ -158,6 +158,21 @@
       border-radius:8px; padding:10px 12px;
     }
 
+    /* ---------- Pantalla de confirmacion ---------- */
+    .conf-empresa{
+      background:var(--surface-2); border:1px solid var(--line);
+      border-radius:8px; padding:12px 14px; margin-bottom:14px;
+    }
+    .conf-empresa .nombre{font-size:15px; font-weight:700;}
+    .conf-empresa .meta{font-size:12px; color:var(--muted); margin-top:2px;}
+
+    .conf-datos{
+      border:1px solid var(--line); border-radius:8px;
+      padding:4px 14px; margin-bottom:16px;
+    }
+    .conf-datos .row{padding:8px 0;}
+    .conf-datos .v.vacio{color:var(--muted); font-weight:400; font-style:italic;}
+
     @media (prefers-reduced-motion: reduce){
       .spin{animation:none;} .check path{animation:none; stroke-dashoffset:0;}
     }
@@ -207,8 +222,32 @@
     </div>
   </section>
 
+  <!-- Vista de confirmacion: ultimo paso antes de escribir en el CRM.
+       Muestra la empresa elegida y todos los datos que se van a guardar. -->
+  <section class="selector" id="vistaConfirmar" hidden>
+    <p class="sel-titulo">Confirma los datos</p>
+    <p class="sel-sub">Se creara este contacto en la empresa seleccionada.</p>
+
+    <div class="conf-empresa">
+      <div class="nombre" id="confEmpresa">—</div>
+      <div class="meta" id="confEmpresaMeta">—</div>
+    </div>
+
+    <div class="conf-datos">
+      <div class="row"><span class="k">Nombre</span><span class="v" id="confNombre">—</span></div>
+      <div class="row"><span class="k">Email</span><span class="v" id="confEmail">—</span></div>
+      <div class="row"><span class="k">Cargo</span><span class="v" id="confCargo">—</span></div>
+      <div class="row"><span class="k">Teléfono</span><span class="v" id="confTelefono">—</span></div>
+    </div>
+
+    <button id="confirmar" class="btn">Crear contacto</button>
+    <button id="volver" class="btn-sec">Elegir otra empresa</button>
+
+    <div id="confEstado" class="status" hidden></div>
+  </section>
+
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=4"></script>
+  <script src="taskpane.js?v=5"></script>
 </body>
 </html>
