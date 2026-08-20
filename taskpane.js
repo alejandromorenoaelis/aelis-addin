@@ -390,7 +390,7 @@ function cerrarSelector() {
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
   $("status").hidden = true;
-  $("detalle").hidden = false;
+  $("detalle").hidden = true;
   pendiente = null;
   arriba();
 }
