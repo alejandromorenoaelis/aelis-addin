@@ -389,6 +389,8 @@ function cerrarSelector() {
   $("vistaSelector").hidden = true;
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
+  $("status").hidden = true;
+  $("detalle").hidden = false;
   pendiente = null;
   arriba();
 }
