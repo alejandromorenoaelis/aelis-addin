@@ -446,6 +446,7 @@ function abrirConfirmacion(cuenta) {
   ponerDato("confEmail", c.email);
   ponerDato("confCargo", c.cargo);
   ponerDato("confTelefono", c.telefono);
+  ponerDato("confMovil", c.movil);
 
   $("confEstado").hidden = true;
   $("confirmar").disabled = false;
