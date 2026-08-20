@@ -386,12 +386,14 @@ function abrirSelector(data) {
 }
 
 function cerrarSelector() {
-  log("cerrarSelector ejecutado");
   $("vistaSelector").hidden = true;
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
-  $("status").hidden = true;
   $("detalle").hidden = true;
+  const box = $("status");
+  box.hidden = true;
+  box.className = "status";
+  box.innerHTML = "";
   pendiente = null;
   arriba();
 }
