@@ -294,6 +294,15 @@ function mostrarResultado(data, imagenes) {
     return;
   }
 
+  if (estadoFlujo === "cuenta_resuelta") {
+    // El flujo ha identificado la empresa por dominio o por telefono.
+    // Se salta el buscador y se va directo a confirmar, con la empresa puesta.
+    log("Cuenta resuelta automaticamente:", data.cuenta && data.cuenta.name);
+    prepararPendiente(data);
+    abrirConfirmacion(data.cuenta);
+    return;
+  }
+
   if (estadoFlujo === "cuenta_no_resuelta") {
     // "candidatas" son las empresas que han casado por dominio o telefono.
     // "cuentas" es el listado completo de Kerberos, para el selector manual.
@@ -319,24 +328,29 @@ function mostrarResultado(data, imagenes) {
 }
 
 // =====================================================================
-//  Selector de empresa
-//  Cuando el flujo A no resuelve la cuenta, el panel muestra un buscador
-//  sobre el listado de empresas que ese mismo flujo ha devuelto. Al elegir
-//  una, se llama al flujo B con la firma y el id de la cuenta.
+//  Seleccion de empresa y confirmacion
+//  El flujo A no crea contactos: devuelve la firma extraida y, si ha podido,
+//  la empresa a la que pertenece. Segun eso el panel abre la confirmacion
+//  directamente (cuenta_resuelta) o el buscador (cuenta_no_resuelta).
+//  La creacion la hace siempre el flujo B, tras el clic de confirmar.
 // =====================================================================
 
 // Normaliza para buscar sin acentos ni mayusculas: "FARMACÉUTICO" -> "farmaceutico"
 const norm = (s) => (s || "").toString().toLowerCase()
   .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-function abrirSelector(data) {
+// Guarda en memoria lo que ha devuelto el flujo A: la firma extraida y el
+// listado de empresas. El panel hace de puente entre las dos llamadas, asi que
+// necesita conservar estos datos para reenviarlos al flujo B.
+function prepararPendiente(data) {
   const firma = data.firma || {};
 
   pendiente = {
     cuentas: Array.isArray(data.cuentas) ? data.cuentas : [],
     // Ids de las empresas que casaron automaticamente, para destacarlas.
-    idsCandidatas: (Array.isArray(data.candidatas) ? data.candidatas : [])
-      .map((c) => c.id),
+    // Con cuenta_resuelta viene una sola, en "cuenta".
+    idsCandidatas: (Array.isArray(data.candidatas) ? data.candidatas
+                    : data.cuenta ? [data.cuenta] : []).map((c) => c.id),
     // Empresa que el usuario ha pulsado, pendiente de confirmar.
     seleccionada: null,
     contacto: {
@@ -354,7 +368,11 @@ function abrirSelector(data) {
 
   const c = pendiente.contacto;
   $("selSub").textContent =
-    [c.nombre, c.apellidos].filter(Boolean).join(" ") + " · " + c.email;
+    [c.nombre, c.apellidos].filter(Boolean).join(" ") + " \u00b7 " + c.email;
+}
+
+function abrirSelector(data) {
+  prepararPendiente(data);
 
   $("buscador").value = "";
   $("selEstado").hidden = true;
@@ -471,8 +489,15 @@ function ponerDato(id, valor) {
 
 function volverAlSelector() {
   $("vistaConfirmar").hidden = true;
-  $("vistaSelector").hidden = false;
   if (pendiente) pendiente.seleccionada = null;
+
+  // Con cuenta_resuelta se salta el buscador, asi que puede no haberse
+  // pintado nunca. Se prepara aqui para que este listo al volver.
+  $("buscador").value = "";
+  $("selEstado").hidden = true;
+  pintarResultados();
+
+  $("vistaSelector").hidden = false;
   $("buscador").focus();
 }
 
