@@ -174,6 +174,10 @@ function leerContenidoAdjunto(id) {
 // adjunto (image001.png@01DA...). Se cruza contra el HTML ya recortado al
 // ultimo mensaje. Si el cruce no da nada, se usan todas las candidatas y sera
 // el flujo quien descarte las que no correspondan al remitente.
+// Diagnostico de la ultima extraccion, para mostrarlo en "Ver detalle".
+// Evita depender de la consola cuando algo no cuadra.
+let diag = {};
+
 function seleccionarImagenesFirma(htmlUltimoMensaje) {
   const adjuntos = Office.context.mailbox.item.attachments || [];
   const cids = extraerCids(htmlUltimoMensaje || "");
@@ -197,6 +201,18 @@ function seleccionarImagenesFirma(htmlUltimoMensaje) {
   log("cids del ultimo mensaje:", cids);
   log("Candidatas:", candidatas.length, "| del ultimo mensaje:", delUltimo.length,
       delUltimo.length ? "(cruce por cid aplicado)" : "(sin cruce: se usan todas)");
+
+  diag = {
+    api18: Office.context.requirements.isSetSupported("Mailbox", "1.8"),
+    adjuntos: adjuntos.length,
+    detalle: adjuntos.map((a) =>
+      (a.name || "?") + " | " + (a.contentType || "?") +
+      " | " + Math.round(Number(a.size) / 1024) + " KB" +
+      " | inline: " + a.isInline),
+    cids: cids.length,
+    candidatas: candidatas.length,
+    delUltimo: delUltimo.length
+  };
 
   const seleccion = delUltimo.length ? delUltimo : candidatas;
 
@@ -616,7 +632,31 @@ function estado(tipo, msg, sub) {
 function rellenarDetalle(texto, imagenes) {
   $("detalle").hidden = false;
   $("preview").textContent = texto || "(vacio)";
-  $("imgs").textContent = imagenes.length
-    ? imagenes.map((im) => "\u2022 " + im.nombre + " (" + Math.round(im.tamano / 1024) + " KB)").join("\n")
-    : "Sin imagenes (firma en texto).";
+
+  const lineas = [];
+
+  if (imagenes.length) {
+    imagenes.forEach((im) => {
+      lineas.push("\u2022 " + im.nombre + " (" + Math.round(im.tamano / 1024) + " KB)");
+    });
+  } else {
+    lineas.push("Sin imagenes (firma en texto).");
+  }
+
+  // Diagnostico: sirve para ver en que paso se pierden las imagenes cuando
+  // una firma en imagen no se detecta.
+  lineas.push("");
+  lineas.push("--- diagnostico ---");
+  lineas.push("API Mailbox 1.8: " + (diag.api18 === true ? "SI" : "NO"));
+  lineas.push("Adjuntos: " + (diag.adjuntos || 0));
+  lineas.push("Candidatas (inline + imagen + >" +
+              Math.round(TAMANO_MINIMO / 1024) + "KB): " + (diag.candidatas || 0));
+  lineas.push("cids en el HTML: " + (diag.cids || 0));
+  lineas.push("Cruce por cid: " + (diag.delUltimo || 0));
+  if (diag.detalle && diag.detalle.length) {
+    lineas.push("");
+    diag.detalle.forEach((d) => lineas.push("- " + d));
+  }
+
+  $("imgs").textContent = lineas.join("\n");
 }
