@@ -386,6 +386,7 @@ function abrirSelector(data) {
 }
 
 function cerrarSelector() {
+  log("cerrarSelector ejecutado");
   $("vistaSelector").hidden = true;
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
