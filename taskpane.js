@@ -381,6 +381,7 @@ function abrirSelector(data) {
   $("vistaPrincipal").hidden = true;
   $("vistaConfirmar").hidden = true;
   $("vistaSelector").hidden = false;
+  arriba();
   $("buscador").focus();
 }
 
@@ -389,6 +390,7 @@ function cerrarSelector() {
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
   pendiente = null;
+  arriba();
 }
 
 function pintarResultados() {
@@ -470,8 +472,18 @@ function abrirConfirmacion(cuenta) {
   $("confirmar").disabled = false;
   $("confirmar").textContent = "Crear contacto";
 
+  $("vistaPrincipal").hidden = true;
   $("vistaSelector").hidden = true;
   $("vistaConfirmar").hidden = false;
+  arriba();
+}
+
+// Al cambiar de vista el panel conserva el scroll anterior, asi que la nueva
+// pantalla puede aparecer empezada por la mitad.
+function arriba() {
+  window.scrollTo(0, 0);
+  if (document.documentElement) document.documentElement.scrollTop = 0;
+  if (document.body) document.body.scrollTop = 0;
 }
 
 // Pinta un dato, marcando en gris los que vengan vacios para que el usuario
@@ -498,6 +510,7 @@ function volverAlSelector() {
   pintarResultados();
 
   $("vistaSelector").hidden = false;
+  arriba();
   $("buscador").focus();
 }
 
