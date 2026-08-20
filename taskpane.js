@@ -386,7 +386,6 @@ function abrirSelector(data) {
 }
 
 function cerrarSelector() {
-  log("cerrarSelector: status.hidden antes =", $("status").hidden);
   $("vistaSelector").hidden = true;
   $("vistaConfirmar").hidden = true;
   $("vistaPrincipal").hidden = false;
@@ -397,7 +396,6 @@ function cerrarSelector() {
   box.innerHTML = "";
   pendiente = null;
   arriba();
-  log("cerrarSelector: status.hidden despues =", $("status").hidden);
 }
 
 function pintarResultados() {
@@ -601,7 +599,6 @@ function resetBoton() {
 
 // ---------- UI ----------
 function estado(tipo, msg, sub) {
-  log("estado() llamado:", tipo, msg);
   const box = $("status");
   box.hidden = false;
   box.className = "status " + tipo;
