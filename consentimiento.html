@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aelis · Consentimiento completado</title>
+  <style>
+    :root{
+      --dark:#001C0B; --green:#5EFCA1; --green-deep:#0E7A4B;
+      --ink:#12211A; --muted:#6B7C74; --surface:#FFFFFF; --surface-2:#F4F7F5; --line:#E4EAE7;
+    }
+    *{box-sizing:border-box;}
+    html,body{margin:0;padding:0;height:100%;}
+    body{
+      font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
+      color:var(--ink); background:var(--surface-2);
+      display:flex; align-items:center; justify-content:center; min-height:100vh;
+    }
+    .card{
+      background:var(--surface); border:1px solid var(--line); border-radius:12px;
+      padding:32px 28px; max-width:420px; text-align:center;
+      box-shadow:0 2px 10px rgba(0,28,11,.06);
+    }
+    .app-header{background:var(--dark); border-radius:10px 10px 0 0; margin:-32px -28px 20px; padding:18px;}
+    .app-sub{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--green); font-weight:700;}
+    .check{width:52px;height:52px;margin:8px auto 16px;display:block;}
+    .check circle{fill:var(--green-deep);}
+    .check path{fill:none; stroke:#fff; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;}
+    h1{font-size:17px; margin:0 0 8px;}
+    p{font-size:13.5px; color:var(--muted); line-height:1.5; margin:0;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="app-header"><div class="app-sub">Aelis</div></div>
+    <svg class="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="12"/><path d="M6.5 12.5l3.5 3.5 7.5-8"/></svg>
+    <h1>Consentimiento completado</h1>
+    <p>
+      Tu organización ya está autorizada para usar el complemento
+      "Extraer firma" de Aelis en Outlook. Ya puedes cerrar esta pestaña.
+    </p>
+  </div>
+</body>
+</html>
