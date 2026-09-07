@@ -112,7 +112,7 @@
          verificar como dominio propio). OJO: confirma contra la
          documentacion vigente de Microsoft si tu escenario requiere
          xsi:type="VersionOverridesV1_1" en vez de V1_0 para que este
-         bloque funcione -- esto ha cambiado con el tiempo y no lo doy por
+         bloque funcione: esto ha cambiado con el tiempo y no lo doy por
          cerrado sin que lo verifiques tu mismo. -->
     <WebApplicationInfo>
       <Id>96217664-d683-4b4e-b46e-d6195347bed4</Id>
