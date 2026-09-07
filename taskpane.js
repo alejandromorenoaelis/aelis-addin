@@ -1,12 +1,34 @@
 // =====================================================================
 //  Aelis · Extraer firma — panel de tareas
-//  URL del flujo de Power Automate.
 // =====================================================================
-const FLOW_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/31/workflows/0601eb70d69047f29f0c43d23a4d5851/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=jho11aSH74yxjGIJ4cbrxt3gp3wiiRt2oJBLnigImHk";
+//  Las URLs con firma de Power Automate YA NO viven aqui. Este archivo es
+//  publico (GitHub Pages), asi que cualquier secreto puesto aqui es, a
+//  todos los efectos, un secreto publico. Ahora el add-in llama a nuestro
+//  propio backend (Azure Function), autenticado con un token de Azure AD
+//  del usuario que tiene la sesion abierta en Outlook. Las URLs reales
+//  viven solo en la configuracion del Function App.
+//
+//  Cambia esto por la URL de tu Function App tras desplegarlo.
+const API_BASE = "https://aelis-firma-func-c6hdgtf5f9d6fpfy.westeurope-01.azurewebsites.net/api";
 
-// Segundo flujo: recibe la firma ya extraida mas el id de cuenta que elige el
-// usuario en el selector, y crea el contacto en Kerberos.
-const FLOW_CREAR_URL = "https://default3ec777bd8b8646a8800f6d98eab6bc.39.environment.api.powerplatform.com:443/powerautomate/automations/direct/cu/20/workflows/ca4d320adca843e7876ff0d705c11b5d/triggers/manual/paths/invoke?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=usS_4NNdfG_hdyU0eAu52rYqF_G8L7TSBzWhL2v8nEE";
+// Obtiene un token de Azure AD para el usuario con sesion abierta en
+// Outlook, sin pedirle usuario/contrasena (inicio de sesion unico). Ese
+// token es lo que demuestra ante el backend que quien llama es una persona
+// real de nuestro tenant, no solo "quien tenga la URL".
+//
+// OJO: verifica contra la documentacion vigente de Microsoft si el metodo
+// correcto en tu version de Outlook es OfficeRuntime.auth.getAccessToken
+// (el que uso aqui) o el mas antiguo Office.auth.getAccessTokenAsync;
+// Microsoft ha ido migrando esta API con el tiempo y no lo doy por
+// definitivo sin que lo compruebes.
+async function obtenerTokenAelis() {
+  try {
+    return await OfficeRuntime.auth.getAccessToken({ allowSignInPrompt: true });
+  } catch (e) {
+    log("No se pudo obtener el token SSO:", (e && e.message) || e);
+    return null;
+  }
+}
 
 // Tamano minimo para considerar que una imagen es una firma y no un icono,
 // un separador o un pixel de seguimiento.
@@ -241,14 +263,19 @@ async function extraerFirma() {
     log("Imagenes con contenido leido:", imagenes.length, imagenes.map((i) => i.nombre));
     rellenarDetalle(datosCorreo.cuerpo, imagenes);
 
-    if (!FLOW_URL) {
-      estado("ok", "Todo listo", "Configura la conexion con Power Automate para enviar.");
+    const token = await obtenerTokenAelis();
+    if (!token) {
+      estado("err", "No se pudo autenticar",
+             "Inicia sesion con tu cuenta de Aelis e intentalo de nuevo.");
       return;
     }
 
-    const res = await fetch(FLOW_URL, {
+    const res = await fetch(API_BASE + "/extraerFirma", {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
       body: JSON.stringify(datosCorreo)
     });
 
@@ -531,10 +558,22 @@ async function crearContacto() {
   const payload = Object.assign({ idCuenta: cuenta.id }, pendiente.contacto);
   log("Enviando al flujo de creacion:", payload);
 
+  const token = await obtenerTokenAelis();
+  if (!token) {
+    estadoConf("err", "No se pudo autenticar",
+               "Inicia sesion con tu cuenta de Aelis e intentalo de nuevo.");
+    boton.disabled = false;
+    boton.textContent = "Reintentar";
+    return;
+  }
+
   try {
-    const res = await fetch(FLOW_CREAR_URL, {
+    const res = await fetch(API_BASE + "/crearContacto", {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
       body: JSON.stringify(payload)
     });
 

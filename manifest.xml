@@ -7,7 +7,7 @@
   xsi:type="MailApp">
 
   <Id>8bd89be5-b65f-43e3-89f3-370b35d2afe7</Id>
-  <Version>1.4.0.0</Version>
+  <Version>1.5.0.0</Version>
   <ProviderName>Aelis Consulting</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="Aelis Procesos"/>
@@ -101,5 +101,25 @@
         <bt:String id="Firma.Tooltip" DefaultValue="Lee el cuerpo del correo y lo envia a Power Automate para extraer la firma."/>
       </bt:LongStrings>
     </Resources>
+
+    <!-- SSO con Entra ID: sustituye la URL-como-secreto por un token real
+         del usuario que ha iniciado sesion. Rellena TU-APPLICATION-CLIENT-ID
+         con el Application (client) ID que anotaste al registrar la app.
+         El Resource usa el formato por defecto api://{client-id} a
+         proposito: es el unico formato de Application ID URI que Azure
+         permite de forma fiable en apps MULTI-TENANT sin tener que
+         verificar un dominio propio en Entra ID (github.io no se puede
+         verificar como dominio propio). OJO: confirma contra la
+         documentacion vigente de Microsoft si tu escenario requiere
+         xsi:type="VersionOverridesV1_1" en vez de V1_0 para que este
+         bloque funcione -- esto ha cambiado con el tiempo y no lo doy por
+         cerrado sin que lo verifiques tu mismo. -->
+    <WebApplicationInfo>
+      <Id>96217664-d683-4b4e-b46e-d6195347bed4</Id>
+      <Resource>api://96217664-d683-4b4e-b46e-d6195347bed4</Resource>
+      <Scopes>
+        <Scope>access_as_user</Scope>
+      </Scopes>
+    </WebApplicationInfo>
   </VersionOverrides>
 </OfficeApp>
