@@ -7,7 +7,7 @@
   xsi:type="MailApp">
 
   <Id>8bd89be5-b65f-43e3-89f3-370b35d2afe7</Id>
-  <Version>1.5.0.0</Version>
+  <Version>1.6.0.0</Version>
   <ProviderName>Aelis Consulting</ProviderName>
   <DefaultLocale>es-ES</DefaultLocale>
   <DisplayName DefaultValue="Aelis Procesos"/>
