@@ -247,8 +247,13 @@
     <div id="confEstado" class="status" hidden></div>
   </section>
 
+  <!-- MSAL Browser, para NAA (Nested App Authentication). Tiene que cargar
+       ANTES que taskpane.js, que usa el global `msal` que expone esta
+       libreria (createNestablePublicClientApplication, InteractionRequiredAuthError). -->
+  <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=15"></script>
+  <script src="taskpane.js?v=16"></script>
 </body>
 </html>

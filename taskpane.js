@@ -11,21 +11,65 @@
 //  Cambia esto por la URL de tu Function App tras desplegarlo.
 const API_BASE = "https://aelis-firma-func-c6hdgtf5f9d6fpfy.westeurope-01.azurewebsites.net/api";
 
+// ---------------------------------------------------------------------
+//  Autenticacion via NAA (Nested App Authentication)
+// ---------------------------------------------------------------------
+//  Sustituye al SSO clasico (WebApplicationInfo + OfficeRuntime.auth /
+//  Office.auth.getAccessTokenAsync). Con SSO clasico, Exchange tenia que
+//  intermediar el token, y era ahi donde rechazaba sistematicamente el
+//  sideload del manifest ("Sideloading rejected by Exchange"), sin
+//  relacion con permisos, roles ni configuracion de la app en Entra ID
+//  (confirmado: los logs de inicio de sesion de Entra ID no registraban
+//  ni un solo intento para esta app, es decir, Exchange bloqueaba antes
+//  de preguntarle nada a Azure AD).
+//
+//  Con NAA, es el propio taskpane.js quien habla directo con Entra ID a
+//  traves de MSAL.js, usando a Outlook solo como "broker" seguro. Exchange
+//  ya no tiene que validar ni gestionar SSO en el manifest, asi que no
+//  hay nada que pueda rechazar en el sideload.
+//
+//  Requiere cargar la libreria MSAL Browser (build UMD, expone el global
+//  `msal`) ANTES de este script en taskpane.html, por ejemplo:
+//    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
+const NAA_CLIENT_ID = "96217664-d683-4b4e-b46e-d6195347bed4";
+const NAA_TENANT_ID = "3ec777bd-8b86-46a8-800f-6d98eab6bc39"; // AELIS DEMO
+const NAA_SCOPES = ["api://96217664-d683-4b4e-b46e-d6195347bed4/access_as_user"];
+
+let msalInstance = undefined;
+
+async function initMsal() {
+  if (!msalInstance) {
+    msalInstance = await msal.createNestablePublicClientApplication({
+      auth: {
+        clientId: NAA_CLIENT_ID,
+        authority: "https://login.microsoftonline.com/" + NAA_TENANT_ID
+      },
+      cache: { cacheLocation: "localStorage" }
+    });
+  }
+}
+
 // Obtiene un token de Azure AD para el usuario con sesion abierta en
 // Outlook, sin pedirle usuario/contrasena (inicio de sesion unico). Ese
 // token es lo que demuestra ante el backend que quien llama es una persona
 // real de nuestro tenant, no solo "quien tenga la URL".
-//
-// OJO: verifica contra la documentacion vigente de Microsoft si el metodo
-// correcto en tu version de Outlook es OfficeRuntime.auth.getAccessToken
-// (el que uso aqui) o el mas antiguo Office.auth.getAccessTokenAsync;
-// Microsoft ha ido migrando esta API con el tiempo y no lo doy por
-// definitivo sin que lo compruebes.
 async function obtenerTokenAelis() {
   try {
-    return await OfficeRuntime.auth.getAccessToken({ allowSignInPrompt: true });
+    await initMsal();
+    const request = { scopes: NAA_SCOPES };
+    try {
+      const resultado = await msalInstance.acquireTokenSilent(request);
+      return resultado.accessToken;
+    } catch (silentError) {
+      if (silentError instanceof msal.InteractionRequiredAuthError) {
+        log("Requiere interaccion, abriendo popup de inicio de sesion...");
+        const resultado = await msalInstance.acquireTokenPopup(request);
+        return resultado.accessToken;
+      }
+      throw silentError;
+    }
   } catch (e) {
-    log("No se pudo obtener el token SSO:", (e && e.message) || e);
+    log("No se pudo obtener el token NAA:", (e && e.message) || e);
     return null;
   }
 }
