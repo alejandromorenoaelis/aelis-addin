@@ -9,7 +9,7 @@
 //  viven solo en la configuracion del Function App.
 //
 //  Cambia esto por la URL de tu Function App tras desplegarlo.
-const API_BASE = "https://aelis-firma-func-c6hdgtf5f9d6fpfy.westeurope-01.azurewebsites.net/api";
+const API_BASE = "https://func-firma-outlook-dev-d6g7crbbekh5hwf0.spaincentral-01.azurewebsites.net/api";
 
 // ---------------------------------------------------------------------
 //  Autenticacion via NAA (Nested App Authentication)
@@ -31,9 +31,9 @@ const API_BASE = "https://aelis-firma-func-c6hdgtf5f9d6fpfy.westeurope-01.azurew
 //  Requiere cargar la libreria MSAL Browser (build UMD, expone el global
 //  `msal`) ANTES de este script en taskpane.html, por ejemplo:
 //    <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3/lib/msal-browser.min.js"></script>
-const NAA_CLIENT_ID = "96217664-d683-4b4e-b46e-d6195347bed4";
-const NAA_TENANT_ID = "3ec777bd-8b86-46a8-800f-6d98eab6bc39"; // AELIS DEMO
-const NAA_SCOPES = ["api://96217664-d683-4b4e-b46e-d6195347bed4/access_as_user"];
+const NAA_CLIENT_ID = "c7340eb1-3c7b-4e3a-862c-9c08eb18ae7a";
+const NAA_TENANT_ID = "3ec777bd-8b86-46a8-800f-6d98eab6bc39"; // AELIS CONSULTING
+const NAA_SCOPES = ["api://c7340eb1-3c7b-4e3a-862c-9c08eb18ae7a/access_as_user"];
 
 let msalInstance = undefined;
 
