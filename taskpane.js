@@ -433,7 +433,9 @@ function prepararPendiente(data) {
       // El flujo ya devuelve el telefono normalizado a 9 digitos.
       telefono: data.telefono || "",
       // El flujo ya devuelve el movil normalizado a 9 digitos.
-      movil: data.movil || ""
+      movil: data.movil || "",
+      // Direccion completa en una linea, tal como viene de la firma.
+      direccion: firma.direccion || ""
     }
   };
 
@@ -543,6 +545,7 @@ function abrirConfirmacion(cuenta) {
   ponerDato("confCargo", c.cargo);
   ponerDato("confTelefono", c.telefono);
   ponerDato("confMovil", c.movil);
+  ponerDato("confDireccion", c.direccion);
 
   $("confEstado").hidden = true;
   $("confirmar").disabled = false;
