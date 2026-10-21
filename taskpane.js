@@ -430,6 +430,10 @@ function prepararPendiente(data) {
       // El email fiable es el del remitente, no el que traiga la firma.
       email: datosCorreo.remitente || firma.email || "",
       cargo: firma.cargo || "",
+      // Departamento elegido por la IA segun el cargo; el flujo A ya lo
+      // devuelve resuelto a su id de Kerberos, que es lo que usa el flujo B.
+      departamento: data.departamento || "",
+      departamentoId: data.departamentoId || "",
       // El flujo ya devuelve el telefono normalizado a 9 digitos.
       telefono: data.telefono || "",
       // El flujo ya devuelve el movil normalizado a 9 digitos.
@@ -543,6 +547,7 @@ function abrirConfirmacion(cuenta) {
   ponerDato("confNombre", [c.nombre, c.apellidos].filter(Boolean).join(" "));
   ponerDato("confEmail", c.email);
   ponerDato("confCargo", c.cargo);
+  ponerDato("confDepartamento", c.departamento);
   ponerDato("confTelefono", c.telefono);
   ponerDato("confMovil", c.movil);
   ponerDato("confDireccion", c.direccion);
