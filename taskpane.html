@@ -58,7 +58,7 @@
 
     /* Spinner del botón */
     .spin{
-      width:16px; height:16px; border:2px solid rgba(0,28,11,.25);
+      display:inline-block; width:16px; height:16px; border:2px solid rgba(0,28,11,.25);
       border-top-color:var(--dark); border-radius:50%; animation:rot .7s linear infinite;
     }
     @keyframes rot{to{transform:rotate(360deg);}}
@@ -268,6 +268,6 @@
 
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=20"></script>
+  <script src="taskpane.js?v=21"></script>
 </body>
 </html>

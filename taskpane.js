@@ -484,6 +484,7 @@ function cerrarSelector() {
 // mientras se escribe y suma lo encontrado a la lista que ya tenia el panel.
 const MIN_CARACTERES_BUSQUEDA = 3;
 const ESPERA_BUSQUEDA_MS = 400;
+const LIMITE_BUSQUEDA_MS = 30000;
 let temporizadorBusqueda = null;
 let ultimaBusqueda = 0;
 
@@ -512,6 +513,11 @@ async function buscarEnKerberos(texto) {
     return;
   }
 
+  // Sin respuesta en este tiempo se corta la peticion, para que el panel no
+  // se quede "Buscando" indefinidamente si el flujo no contesta.
+  const corte = new AbortController();
+  const temporizadorCorte = setTimeout(() => corte.abort(), LIMITE_BUSQUEDA_MS);
+
   try {
     const res = await fetch(API_BASE + "/buscarCuentas", {
       method: "POST",
@@ -519,7 +525,8 @@ async function buscarEnKerberos(texto) {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + token
       },
-      body: JSON.stringify({ texto })
+      body: JSON.stringify({ texto }),
+      signal: corte.signal
     });
     if (id !== ultimaBusqueda || !pendiente) return;
 
@@ -546,7 +553,12 @@ async function buscarEnKerberos(texto) {
   } catch (e) {
     if (id !== ultimaBusqueda) return;
     log("Error buscando cuentas:", e);
-    estadoSel("err", "No se pudo buscar", (e && e.message ? e.message : "Error de red") + ".");
+    estadoSel("err", "No se pudo buscar",
+              e && e.name === "AbortError"
+                ? "Kerberos no ha respondido a tiempo. Intentalo de nuevo."
+                : (e && e.message ? e.message : "Error de red") + ".");
+  } finally {
+    clearTimeout(temporizadorCorte);
   }
 }
 
