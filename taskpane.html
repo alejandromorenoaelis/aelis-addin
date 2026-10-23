@@ -13,6 +13,9 @@
       --warn:#8A5A00; --warn-bg:#FFF8E8; --warn-line:#F0D9A8;
     }
     *{box-sizing:border-box;}
+    /* Sin esto, clases con display propio (.status es flex) ignoran el atributo
+       hidden y un aviso como "Buscando..." se queda visible aunque se oculte. */
+    [hidden]{display:none !important;}
     html,body{margin:0;padding:0;}
     body{
       font-family:"Segoe UI",system-ui,-apple-system,sans-serif;
@@ -268,6 +271,6 @@
 
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=21"></script>
+  <script src="taskpane.js?v=22"></script>
 </body>
 </html>

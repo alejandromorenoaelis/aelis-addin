@@ -537,7 +537,13 @@ async function buscarEnKerberos(texto) {
     }
 
     const data = await res.json().catch(() => ({}));
-    const encontradas = Array.isArray(data.cuentas) ? data.cuentas : [];
+    // Si en el Response del flujo la expresion queda entre comillas, Power
+    // Automate manda la lista como texto JSON; se acepta igualmente.
+    let encontradas = data.cuentas;
+    if (typeof encontradas === "string") {
+      try { encontradas = JSON.parse(encontradas); } catch (e) { encontradas = []; }
+    }
+    if (!Array.isArray(encontradas)) encontradas = [];
     log("Busqueda en Kerberos:", texto, "->", encontradas.length);
 
     const ids = new Set(pendiente.cuentas.map((c) => c.id));
