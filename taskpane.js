@@ -115,7 +115,7 @@ Office.onReady(() => {
   boton.onclick = extraerFirma;
 
   $("cancelar").onclick = cerrarSelector;
-  $("buscador").oninput = pintarResultados;
+  $("buscador").oninput = alEscribirBuscador;
   $("volver").onclick = volverAlSelector;
   $("confirmar").onclick = crearContacto;
 
@@ -478,6 +478,89 @@ function cerrarSelector() {
   arriba();
 }
 
+// ---------- busqueda de empresas en Kerberos ----------
+// En produccion hay demasiadas cuentas para que el flujo A las mande todas
+// (la API devuelve como mucho 100), asi que el buscador pregunta a Kerberos
+// mientras se escribe y suma lo encontrado a la lista que ya tenia el panel.
+const MIN_CARACTERES_BUSQUEDA = 3;
+const ESPERA_BUSQUEDA_MS = 400;
+let temporizadorBusqueda = null;
+let ultimaBusqueda = 0;
+
+function alEscribirBuscador() {
+  pintarResultados();
+  clearTimeout(temporizadorBusqueda);
+  const texto = $("buscador").value.trim();
+  if (texto.length < MIN_CARACTERES_BUSQUEDA) {
+    $("selEstado").hidden = true;
+    return;
+  }
+  temporizadorBusqueda = setTimeout(() => buscarEnKerberos(texto), ESPERA_BUSQUEDA_MS);
+}
+
+async function buscarEnKerberos(texto) {
+  // Cada busqueda lleva un numero; si mientras tanto se lanzo otra, la
+  // respuesta de esta se descarta para no pisar resultados mas recientes.
+  const id = ++ultimaBusqueda;
+  estadoSel("work", "Buscando en Kerberos…", "");
+
+  const token = await obtenerTokenAelis();
+  if (id !== ultimaBusqueda || !pendiente) return;
+  if (!token) {
+    estadoSel("err", "No se pudo autenticar",
+              "Inicia sesion con tu cuenta de Aelis e intentalo de nuevo.");
+    return;
+  }
+
+  try {
+    const res = await fetch(API_BASE + "/buscarCuentas", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + token
+      },
+      body: JSON.stringify({ texto })
+    });
+    if (id !== ultimaBusqueda || !pendiente) return;
+
+    if (!res.ok) {
+      log("El flujo de busqueda respondio", res.status, await res.text().catch(() => ""));
+      estadoSel("err", "No se pudo buscar", "El flujo respondio con el codigo " + res.status + ".");
+      return;
+    }
+
+    const data = await res.json().catch(() => ({}));
+    const encontradas = Array.isArray(data.cuentas) ? data.cuentas : [];
+    log("Busqueda en Kerberos:", texto, "->", encontradas.length);
+
+    const ids = new Set(pendiente.cuentas.map((c) => c.id));
+    encontradas.forEach((c) => {
+      if (c && c.id && !ids.has(c.id)) {
+        pendiente.cuentas.push(c);
+        ids.add(c.id);
+      }
+    });
+
+    $("selEstado").hidden = true;
+    pintarResultados();
+  } catch (e) {
+    if (id !== ultimaBusqueda) return;
+    log("Error buscando cuentas:", e);
+    estadoSel("err", "No se pudo buscar", (e && e.message ? e.message : "Error de red") + ".");
+  }
+}
+
+function estadoSel(tipo, msg, sub) {
+  const caja = $("selEstado");
+  caja.hidden = false;
+  caja.className = "status " + tipo;
+  const ico = tipo === "err"
+    ? '<span class="badge err">!</span>'
+    : '<span class="spin"></span>';
+  caja.innerHTML = '<span class="ico">' + ico + '</span><div><div class="msg">' +
+    msg + '</div><div class="sub">' + (sub || "") + '</div></div>';
+}
+
 function pintarResultados() {
   const lista = $("resultados");
   lista.innerHTML = "";
@@ -498,7 +581,9 @@ function pintarResultados() {
   if (!cuentas.length) {
     const li = document.createElement("li");
     li.className = "vacio";
-    li.textContent = "Ninguna empresa coincide con la busqueda.";
+    li.textContent = q.length < MIN_CARACTERES_BUSQUEDA
+      ? "Escribe al menos " + MIN_CARACTERES_BUSQUEDA + " letras para buscar en Kerberos."
+      : "Ninguna empresa coincide con la busqueda.";
     lista.appendChild(li);
     return;
   }
