@@ -418,6 +418,9 @@ function prepararPendiente(data) {
 
   pendiente = {
     cuentas: Array.isArray(data.cuentas) ? data.cuentas : [],
+    // Catalogo de departamentos de contacto ({ id, name }) para el desplegable
+    // de la confirmacion. Si el flujo no lo manda, solo se ofrece el sugerido.
+    departamentos: Array.isArray(data.departamentos) ? data.departamentos : [],
     // Ids de las empresas que casaron automaticamente, para destacarlas.
     // Con cuenta_resuelta viene una sola, en "cuenta".
     idsCandidatas: (Array.isArray(data.candidatas) ? data.candidatas
@@ -546,11 +549,14 @@ function abrirConfirmacion(cuenta) {
 
   ponerDato("confNombre", [c.nombre, c.apellidos].filter(Boolean).join(" "));
   ponerDato("confEmail", c.email);
-  ponerDato("confCargo", c.cargo);
-  ponerDato("confDepartamento", c.departamento);
   ponerDato("confTelefono", c.telefono);
   ponerDato("confMovil", c.movil);
-  ponerDato("confDireccion", c.direccion);
+
+  // Cargo, departamento y direccion son editables: el usuario puede corregir
+  // lo que haya extraido la IA antes de crear el contacto.
+  $("confCargo").value = c.cargo;
+  $("confDireccion").value = c.direccion;
+  pintarDepartamentos(c);
 
   $("confEstado").hidden = true;
   $("confirmar").disabled = false;
@@ -583,7 +589,38 @@ function ponerDato(id, valor) {
   }
 }
 
+// Rellena el desplegable de departamentos con el catalogo de Kerberos y deja
+// seleccionado el que eligio la IA. Sin catalogo, ofrece solo el sugerido.
+function pintarDepartamentos(c) {
+  const sel = $("confDepartamento");
+  sel.innerHTML = "";
+
+  const opciones = pendiente.departamentos.length
+    ? pendiente.departamentos
+    : (c.departamentoId ? [{ id: c.departamentoId, name: c.departamento }] : []);
+
+  if (!c.departamentoId || !opciones.some((d) => d.id === c.departamentoId)) {
+    sel.appendChild(new Option("Sin datos", ""));
+  }
+  opciones.forEach((d) => sel.appendChild(new Option(d.name || d.id, d.id)));
+  sel.value = c.departamentoId || "";
+}
+
+// Vuelca en el contacto pendiente lo que el usuario haya editado en la
+// confirmacion, para que se envie al flujo B y no se pierda al cambiar de empresa.
+function leerEdiciones() {
+  if (!pendiente) return;
+  const c = pendiente.contacto;
+  const sel = $("confDepartamento");
+
+  c.cargo = $("confCargo").value.trim();
+  c.direccion = $("confDireccion").value.trim();
+  c.departamentoId = sel.value;
+  c.departamento = sel.value ? sel.options[sel.selectedIndex].text : "";
+}
+
 function volverAlSelector() {
+  leerEdiciones();
   $("vistaConfirmar").hidden = true;
   if (pendiente) pendiente.seleccionada = null;
 
@@ -600,6 +637,7 @@ function volverAlSelector() {
 
 async function crearContacto() {
   if (!pendiente || !pendiente.seleccionada) return;
+  leerEdiciones();
 
   const cuenta = pendiente.seleccionada;
   const boton = $("confirmar");

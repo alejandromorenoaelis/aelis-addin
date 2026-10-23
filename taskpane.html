@@ -173,6 +173,15 @@
     .conf-datos .row{padding:8px 0;}
     .conf-datos .v.vacio{color:var(--muted); font-weight:400; font-style:italic;}
 
+    /* Campos editables de la confirmacion (cargo, departamento, direccion) */
+    .campo{
+      width:100%; margin-top:3px; font-family:inherit; font-size:14px; font-weight:600;
+      color:var(--ink); padding:7px 9px; border:1px solid var(--line); border-radius:6px;
+      background:var(--surface-2); outline:none; resize:vertical;
+    }
+    .campo:focus{border-color:var(--green-deep); background:var(--surface);}
+    .campo::placeholder{color:var(--muted); font-weight:400; font-style:italic;}
+
     @media (prefers-reduced-motion: reduce){
       .spin{animation:none;} .check path{animation:none; stroke-dashoffset:0;}
     }
@@ -236,11 +245,14 @@
     <div class="conf-datos">
       <div class="row"><span class="k">Nombre</span><span class="v" id="confNombre">—</span></div>
       <div class="row"><span class="k">Email</span><span class="v" id="confEmail">—</span></div>
-      <div class="row"><span class="k">Cargo</span><span class="v" id="confCargo">—</span></div>
-      <div class="row"><span class="k">Departamento</span><span class="v" id="confDepartamento">—</span></div>
+      <label class="row"><span class="k">Cargo</span>
+        <input type="text" class="campo" id="confCargo" placeholder="Sin datos" autocomplete="off" /></label>
+      <label class="row"><span class="k">Departamento</span>
+        <select class="campo" id="confDepartamento"></select></label>
       <div class="row"><span class="k">Teléfono</span><span class="v" id="confTelefono">—</span></div>
       <div class="row"><span class="k">Móvil</span><span class="v" id="confMovil">—</span></div>
-      <div class="row"><span class="k">Dirección</span><span class="v" id="confDireccion">—</span></div>
+      <label class="row"><span class="k">Dirección</span>
+        <textarea class="campo" id="confDireccion" rows="2" placeholder="Sin datos"></textarea></label>
     </div>
 
     <button id="confirmar" class="btn">Crear contacto</button>
@@ -256,6 +268,6 @@
 
   <!-- Subir el numero de version cada vez que se cambie el JS.
        Evita que Outlook siga sirviendo la version cacheada. -->
-  <script src="taskpane.js?v=18"></script>
+  <script src="taskpane.js?v=19"></script>
 </body>
 </html>
